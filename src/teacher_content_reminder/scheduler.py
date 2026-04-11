@@ -46,6 +46,7 @@ def due_source_names(config: AppConfig, current: datetime, force: bool = False) 
     return [
         source.name
         for source in config.enabled_sources
+        if source.auto_queue_enabled
         if cron_matches(source.schedule_cron, localized)
     ]
 

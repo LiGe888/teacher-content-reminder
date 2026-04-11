@@ -18,6 +18,9 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(config.providers["qwen"].model, "qwen-plus")
         self.assertTrue(config.providers["kimi"].enabled)
         self.assertTrue(config.providers["deepseek"].enabled)
+        self.assertTrue(config.sources["nasa_news"].auto_queue_enabled)
+        self.assertFalse(config.sources["ap_highlights"].auto_queue_enabled)
+        self.assertEqual(config.review.auto_approve_score, 86)
 
 
 

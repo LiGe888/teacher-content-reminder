@@ -141,22 +141,27 @@ class SchedulerTests(unittest.TestCase):
         self.config = load_config("config/default.toml")
 
     def test_due_source_names_match_cron(self) -> None:
-        nasa_time = datetime(2026, 4, 13, 8, 30, tzinfo=ZoneInfo("Asia/Shanghai"))
-        ap_time = datetime(2026, 4, 13, 8, 10, tzinfo=ZoneInfo("Asia/Shanghai"))
-        science_time = datetime(2026, 4, 13, 8, 15, tzinfo=ZoneInfo("Asia/Shanghai"))
-        smithsonian_time = datetime(2026, 4, 13, 8, 25, tzinfo=ZoneInfo("Asia/Shanghai"))
+        nasa_time = datetime(2026, 4, 13, 8, 10, tzinfo=ZoneInfo("Asia/Shanghai"))
+        ap_time = datetime(2026, 4, 13, 9, 50, tzinfo=ZoneInfo("Asia/Shanghai"))
+        science_time = datetime(2026, 4, 13, 9, 20, tzinfo=ZoneInfo("Asia/Shanghai"))
+        smithsonian_time = datetime(2026, 4, 13, 10, 35, tzinfo=ZoneInfo("Asia/Shanghai"))
 
         self.assertIn("nasa_news", due_source_names(self.config, current=nasa_time))
-        self.assertIn("ap_highlights", due_source_names(self.config, current=ap_time))
         self.assertIn("science_news", due_source_names(self.config, current=science_time))
         self.assertIn("smithsonian_science", due_source_names(self.config, current=smithsonian_time))
-        self.assertTrue(cron_matches("0,30 * * * *", nasa_time))
+        self.assertNotIn("ap_highlights", due_source_names(self.config, current=ap_time))
+        self.assertTrue(cron_matches("50 9,13,17 * * 1,2,3,4,5", ap_time))
+
+    def test_force_due_sources_includes_manual_pool(self) -> None:
+        force_time = datetime(2026, 4, 13, 11, 0, tzinfo=ZoneInfo("Asia/Shanghai"))
+        targets = due_source_names(self.config, current=force_time, force=True)
+        self.assertIn("ap_highlights", targets)
 
     def test_review_thresholds_follow_beta_strategy(self) -> None:
-        self.assertEqual(review_recommendation(self.config, 74.9), "discard")
-        self.assertEqual(review_recommendation(self.config, 80.0), "review")
-        self.assertEqual(review_recommendation(self.config, 85.0), "auto_send")
-        self.assertEqual(review_recommendation(self.config, 91.0), "special")
+        self.assertEqual(review_recommendation(self.config, 77.9), "discard")
+        self.assertEqual(review_recommendation(self.config, 82.0), "review")
+        self.assertEqual(review_recommendation(self.config, 88.0), "auto_send")
+        self.assertEqual(review_recommendation(self.config, 93.0), "special")
         self.assertEqual(initial_queue_status(self.config, "review"), "pending_review")
 
     def test_dispatch_requires_send_window_and_gap(self) -> None:

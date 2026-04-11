@@ -124,6 +124,7 @@ class SourceConfig:
     type: str
     entry_url: str
     enabled: bool = True
+    auto_queue_enabled: bool = True
     priority: int = 0
     schedule_cron: str = "0 * * * *"
 
