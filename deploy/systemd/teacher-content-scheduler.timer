@@ -1,0 +1,10 @@
+[Unit]
+Description=Run Teacher Content Reminder scheduler every 10 minutes
+
+[Timer]
+OnCalendar=*:0/10
+Persistent=true
+Unit=teacher-content-scheduler.service
+
+[Install]
+WantedBy=timers.target

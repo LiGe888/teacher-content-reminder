@@ -1,0 +1,18 @@
+[Unit]
+Description=Teacher Content Reminder API
+After=network.target
+
+[Service]
+Type=simple
+User=teacherreminder
+Group=teacherreminder
+WorkingDirectory=/opt/teacher-content-reminder
+EnvironmentFile=/opt/teacher-content-reminder/.env
+Environment=PYTHONPATH=src
+ExecStart=/opt/teacher-content-reminder/.venv/bin/python -m uvicorn teacher_content_reminder.api:app --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=5
+TimeoutStartSec=30
+
+[Install]
+WantedBy=multi-user.target

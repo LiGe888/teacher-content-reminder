@@ -1,0 +1,12 @@
+[Unit]
+Description=Teacher Content Reminder scheduled runner
+After=network.target
+
+[Service]
+Type=oneshot
+User=teacherreminder
+Group=teacherreminder
+WorkingDirectory=/opt/teacher-content-reminder
+EnvironmentFile=/opt/teacher-content-reminder/.env
+Environment=PYTHONPATH=src
+ExecStart=/opt/teacher-content-reminder/.venv/bin/teacher-content-reminder run-scheduled --provider router --send

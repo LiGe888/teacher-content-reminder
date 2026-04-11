@@ -1,0 +1,78 @@
+project:
+  name: teacher-content-reminder
+  timezone: Asia/Shanghai
+  default_review_mode: manual
+  max_daily_push: 3
+
+selection:
+  freshness_hours: 72
+  min_total_score: 75
+  queue_review_score_min: 60
+  content_mix:
+    current_events: 0.4
+    science_nature: 0.35
+    culture_history: 0.25
+
+audiences:
+  junior:
+    cefr: A2-B1
+    passage_words: [120, 220]
+    question_count: 5
+    cloze_blanks: 8
+  senior:
+    cefr: B1-B2
+    passage_words: [250, 450]
+    question_count: 5
+    cloze_blanks: 10
+  adult:
+    cefr: B2-C1
+    passage_words: [400, 700]
+    question_count: 6
+    cloze_blanks: 12
+
+exercise_profiles:
+  default:
+    enabled:
+      - reading_comprehension
+      - cloze_test
+    include_answers: true
+    include_explanations: true
+
+delivery:
+  channel: dingtalk
+  template: morning_reading
+  webhook_env: DINGTALK_WEBHOOK_URL
+  secret_env: DINGTALK_SECRET
+
+sources:
+  - name: nasa_news
+    category: science_nature
+    type: rss
+    entry_url: https://www.nasa.gov/news-release/feed/
+    enabled: true
+    priority: 10
+    schedule_cron: "*/30 * * * *"
+
+  - name: science_news
+    category: science_nature
+    type: html_list
+    entry_url: https://www.sciencenews.org/
+    enabled: true
+    priority: 9
+    schedule_cron: "0 * * * *"
+
+  - name: smithsonian_science
+    category: culture_history
+    type: html_list
+    entry_url: https://www.smithsonianmag.com/science-nature/
+    enabled: true
+    priority: 8
+    schedule_cron: "15 * * * *"
+
+  - name: ap_highlights
+    category: current_events
+    type: html_list
+    entry_url: https://apnews.com/
+    enabled: true
+    priority: 8
+    schedule_cron: "*/20 * * * *"
