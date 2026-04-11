@@ -146,6 +146,7 @@ ALERT_VIEW_HOST=https://your-domain.example.com
 - `ALERT_VIEW_HOST` 用来拼出告警详情页和导出讲义页的公网链接
 - 当前默认模型链就是 `router`，顺序为 `qwen -> kimi -> deepseek`
 - 没填 key 的 provider 会被自动跳过，不会阻塞服务启动
+- 如果部署脚本里的 `DOMAIN` 没填或保持 `_`，脚本会自动用服务器 IP 作为 `nginx` 的 `server_name`
 
 生产环境建议把 `.env` 放在项目根目录：
 

@@ -118,7 +118,11 @@ render_systemd_unit() {
 render_nginx_conf() {
   local source_file="$1"
   local target_file="$2"
-  sed -e "s#your-domain.example.com#${DOMAIN}#g" "${source_file}" > "${target_file}"
+  local server_name="${DOMAIN}"
+  if [[ -z "${server_name}" || "${server_name}" == "_" ]]; then
+    server_name="${SERVER_IP}"
+  fi
+  sed -e "s#your-domain.example.com#${server_name}#g" "${source_file}" > "${target_file}"
 }
 
 ensure_packages
