@@ -23,6 +23,11 @@
 - 安装 `nginx`
 - 执行部署后检查
 
+脚本默认已经内置国内镜像参数：
+
+- `PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/`
+- `PIP_TRUSTED_HOST=mirrors.aliyun.com`
+
 ## 1. 服务器建议
 
 - 系统：`Ubuntu 22.04/24.04` 或 `Alibaba Cloud Linux 3`
@@ -97,6 +102,17 @@ git clone <your-repo-url> .
 python3.11 -m venv .venv
 .venv/bin/pip install --upgrade pip
 .venv/bin/pip install -e ".[api]"
+```
+
+如果服务器在中国大陆，建议优先使用阿里云镜像源：
+
+```bash
+.venv/bin/pip install --upgrade pip setuptools wheel \
+  --index-url https://mirrors.aliyun.com/pypi/simple/ \
+  --trusted-host mirrors.aliyun.com
+.venv/bin/pip install -e ".[api]" --no-build-isolation \
+  --index-url https://mirrors.aliyun.com/pypi/simple/ \
+  --trusted-host mirrors.aliyun.com
 ```
 
 如果你希望服务器上也能直接运行 `pytest` 或扩展调试工具，可以改成：

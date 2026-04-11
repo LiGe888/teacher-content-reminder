@@ -9,6 +9,8 @@ REMOTE_DIR="${REMOTE_DIR:-/opt/teacher-content-reminder}"
 DOMAIN="${DOMAIN:-_}"
 SYNC_ENV="${SYNC_ENV:-1}"
 RUN_POST_CHECK="${RUN_POST_CHECK:-1}"
+PIP_INDEX_URL="${PIP_INDEX_URL:-https://mirrors.aliyun.com/pypi/simple/}"
+PIP_TRUSTED_HOST="${PIP_TRUSTED_HOST:-mirrors.aliyun.com}"
 
 SSH_TARGET="${SERVER_USER}@${SERVER_IP}"
 SSH_OPTS=(-p "${SERVER_PORT}")
@@ -25,6 +27,7 @@ echo "REMOTE_DIR=${REMOTE_DIR}"
 echo "APP_USER=${APP_USER}"
 echo "DOMAIN=${DOMAIN}"
 echo "SYNC_ENV=${SYNC_ENV}"
+echo "PIP_INDEX_URL=${PIP_INDEX_URL}"
 echo "=========================================================="
 
 if ! command -v rsync >/dev/null 2>&1; then
@@ -64,7 +67,7 @@ fi
 echo
 echo "4. 远端安装依赖、配置服务、执行检查..."
 ssh "${SSH_OPTS[@]}" "${SSH_TARGET}" \
-  "REMOTE_DIR='${REMOTE_DIR}' APP_USER='${APP_USER}' DOMAIN='${DOMAIN}' SERVER_IP='${SERVER_IP}' REMOTE_ENV_FILE='${REMOTE_ENV_FILE}' RUN_POST_CHECK='${RUN_POST_CHECK}' bash -s" <<'EOF'
+  "REMOTE_DIR='${REMOTE_DIR}' APP_USER='${APP_USER}' DOMAIN='${DOMAIN}' SERVER_IP='${SERVER_IP}' REMOTE_ENV_FILE='${REMOTE_ENV_FILE}' RUN_POST_CHECK='${RUN_POST_CHECK}' PIP_INDEX_URL='${PIP_INDEX_URL}' PIP_TRUSTED_HOST='${PIP_TRUSTED_HOST}' bash -s" <<'EOF'
 set -euo pipefail
 
 install_packages_apt() {
@@ -136,8 +139,8 @@ fi
 run_as_app_user "
   cd '${REMOTE_DIR}' && \
   python3.11 -m venv .venv && \
-  .venv/bin/pip install --upgrade pip && \
-  .venv/bin/pip install -e '.[api]' && \
+  .venv/bin/pip install --upgrade pip setuptools wheel --index-url '${PIP_INDEX_URL}' --trusted-host '${PIP_TRUSTED_HOST}' && \
+  .venv/bin/pip install -e '.[api]' --no-build-isolation --index-url '${PIP_INDEX_URL}' --trusted-host '${PIP_TRUSTED_HOST}' && \
   mkdir -p .data .exports && \
   PYTHONPATH=src .venv/bin/python -m teacher_content_reminder init-db
 "
