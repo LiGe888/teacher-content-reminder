@@ -198,6 +198,13 @@ def render_print_html(item: GeneratedPreviewItem, variant: str = "teacher") -> t
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{escape(title)} ({escape(variant)})</title>
+  <!-- generation metadata -->
+  <meta name="generator-provider" content="{escape(package.generator_provider)}" />
+  <meta name="generator-model" content="{escape(package.generator_model)}" />
+  <meta name="generated-at" content="{escape(package.generated_at.isoformat())}" />
+  <meta name="source-url" content="{escape(article.canonical_url)}" />
+  <meta name="audience" content="{escape(package.audience)}" />
+  <meta name="score" content="{item.preview.score.total_score}" />
   <style>
     :root {{
       --ink: #1f2937;
@@ -279,6 +286,15 @@ def render_print_html(item: GeneratedPreviewItem, variant: str = "teacher") -> t
       main {{ width: auto; margin: 0; padding: 14mm; }}
       a {{ color: inherit; text-decoration: none; }}
       .panel {{ break-inside: avoid; }}
+      .doc-meta {{ display: block; }}
+    }}
+    .doc-meta {{
+      display: block;
+      font-size: 0.78rem;
+      color: var(--muted);
+      border-top: 1px solid var(--line);
+      padding: 10px 0 4px;
+      margin-top: 32px;
     }}
   </style>
 </head>
@@ -313,6 +329,12 @@ def render_print_html(item: GeneratedPreviewItem, variant: str = "teacher") -> t
     </section>
     {answer_section}
   </main>
+  <footer class="doc-meta">
+    Generated: {escape(package.generated_at.strftime("%Y-%m-%d %H:%M UTC"))} |
+    Provider: {escape(package.generator_provider)} / {escape(package.generator_model)} |
+    Score: {item.preview.score.total_score} |
+    Source: <a href="{escape(article.canonical_url)}">{escape(article.source_name)}</a>
+  </footer>
 </body>
 </html>"""
     return title, html

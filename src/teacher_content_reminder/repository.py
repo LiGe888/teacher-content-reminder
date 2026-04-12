@@ -128,13 +128,21 @@ class SQLiteRepository:
                 """
             )
 
-    def has_article(self, url: str) -> bool:
+    def has_article(self, url: str, content_hash: str | None = None) -> bool:
         with self._connect() as connection:
             row = connection.execute(
                 "SELECT 1 FROM raw_articles WHERE source_url = ? OR canonical_url = ? LIMIT 1",
                 (url, url),
             ).fetchone()
-        return row is not None
+            if row is not None:
+                return True
+            if content_hash:
+                row = connection.execute(
+                    "SELECT 1 FROM raw_articles WHERE content_hash = ? LIMIT 1",
+                    (content_hash,),
+                ).fetchone()
+                return row is not None
+        return False
 
     def save_article(self, article: RawArticle, score: ArticleScore) -> None:
         payload = json.dumps(asdict(score), ensure_ascii=False)

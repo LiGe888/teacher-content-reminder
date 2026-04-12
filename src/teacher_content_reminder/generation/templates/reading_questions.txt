@@ -1,0 +1,28 @@
+Generate reading comprehension questions for the following passage.
+
+Audience: {audience_key}
+Question count: {question_count}
+Include answers: {include_answers}
+Include explanations: {include_explanations}
+Facts summary: {facts_summary}
+Passage:
+{passage}
+
+Rules:
+- Create exactly {question_count} multiple-choice questions.
+- Cover a mix of main idea, detail, vocabulary in context, inference, and purpose when possible.
+- Every question must have exactly 4 options.
+- Use plausible distractors grounded in the topic. Avoid joke answers and avoid meta options such as "the passage says" or "this question asks".
+- Vary the correct answer positions across A, B, C, and D.
+- Explanations should briefly justify the answer using passage evidence.
+
+Return a single JSON object with:
+- questions: array of objects
+
+Each question object must contain:
+- question_id
+- question_type
+- stem
+- options: array of 4 strings, each already labeled like "A. ..."
+- answer: one of "A", "B", "C", "D"
+- explanation

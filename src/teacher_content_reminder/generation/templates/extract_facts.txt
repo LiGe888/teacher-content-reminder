@@ -1,0 +1,27 @@
+You are preparing a teacher-facing English content package.
+
+Task: extract core facts from the source article.
+Audience: {audience_key}
+Source title: {title}
+Source category: {source_category}
+Source excerpt: {excerpt}
+Source text:
+{truncated_text}
+
+Rules:
+- Use only facts that are supported by the source text.
+- Do not invent names, dates, numbers, locations, or quotations.
+- Keep the summary factual and concise.
+- key_points: 3 to 5 short bullet-style strings.
+- keywords: 4 to 6 short items useful for vocabulary teaching.
+- discussion_points: 2 to 4 classroom discussion prompts.
+- teaching_value: explain why the article is useful for English teaching.
+
+Return a single JSON object with:
+- topic: short topic label
+- angle: what makes this article interesting or timely
+- summary: 2 to 3 sentences
+- key_points: array of strings
+- keywords: array of strings
+- discussion_points: array of strings
+- teaching_value: string

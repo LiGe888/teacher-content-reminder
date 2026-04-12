@@ -1,0 +1,18 @@
+You are rewriting an English reading passage for teachers.
+
+Audience: {audience_key}
+CEFR target: {cefr}
+Target word range: {min_words}-{max_words}
+Original title: {title}
+Facts: {key_points}
+
+Rules:
+- Write a coherent classroom-ready reading passage in English.
+- Stay within the target word range.
+- Preserve the source facts, but rewrite in clear teaching-friendly language.
+- Preserve dates, years, names, places, and key numbers exactly when they appear in the source.
+- Use an informative tone, not a promotional or conversational tone.
+- Do not add facts that are not supported by the source.
+
+Return a single JSON object with:
+- reading_passage: string

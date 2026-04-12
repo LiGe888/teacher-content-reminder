@@ -22,6 +22,7 @@ from teacher_content_reminder.scheduler import (
     review_recommendation,
 )
 from teacher_content_reminder.scoring import score_article
+from teacher_content_reminder.utils import hash_text
 
 
 class ContentPipeline:
@@ -59,6 +60,11 @@ class ContentPipeline:
             )
             if candidate.title and not article.title:
                 article.title = candidate.title
+
+            # Secondary dedup: skip if same content body already exists under a different URL
+            if article.raw_text and self.repository.has_article(candidate.url, content_hash=hash_text(article.raw_text)):
+                continue
+
             score = score_article(article)
             preview = PreviewItem(candidate=candidate, article=article, score=score)
             if persist:
@@ -164,6 +170,16 @@ class ContentPipeline:
         targets = source_names or due_source_names(self.config, current=current, force=force)
         results: dict[str, list[ReviewQueueItem]] = {}
         for source_name in targets:
+            # Content-mix guard: skip if this category is already over its quota
+            if not force and not self._category_quota_ok(source_name):
+                self._log_activity(
+                    event_type="queue_item",
+                    status="skipped",
+                    message=f"Skipped {source_name}: category quota reached per content_mix config.",
+                    source_name=source_name,
+                )
+                results[source_name] = []
+                continue
             try:
                 results[source_name] = self.queue_source_for_review(
                     source_name=source_name,
@@ -198,6 +214,40 @@ class ContentPipeline:
                         },
                     )
         return results
+
+    def _category_quota_ok(self, source_name: str) -> bool:
+        """Return True if queueing from source_name would not exceed the content_mix quota.
+
+        Only enforced when selection.content_mix is configured.  The check looks at
+        the last 20 pending/approved items in the review queue and compares the
+        category share against the configured ratio.
+        """
+        content_mix = self.config.selection.content_mix
+        if not content_mix:
+            return True
+        source = self.config.sources.get(source_name)
+        if source is None:
+            return True
+        category = source.category
+        target_ratio = content_mix.get(category)
+        if target_ratio is None:
+            return True  # category not in mix config — always allow
+
+        recent_items = self.repository.list_review_queue(limit=20)
+        if not recent_items:
+            return True
+
+        # Count how many of the recent items belong to this category
+        category_counts: dict[str, int] = {}
+        for item in recent_items:
+            src = self.config.sources.get(item.source_name)
+            cat = src.category if src else "unknown"
+            category_counts[cat] = category_counts.get(cat, 0) + 1
+
+        total = len(recent_items)
+        current_ratio = category_counts.get(category, 0) / total
+        # Allow up to 1.5× the target ratio as a soft ceiling
+        return current_ratio < target_ratio * 1.5
 
     def list_review_queue(
         self,

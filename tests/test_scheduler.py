@@ -222,6 +222,27 @@ class SchedulerTests(unittest.TestCase):
             self.assertFalse(blocked.allowed)
             self.assertEqual(blocked.reason, "weekend_send_disabled")
 
+    def test_dispatch_daily_limit_blocks(self) -> None:
+        morning = datetime(2026, 4, 13, 7, 40, tzinfo=ZoneInfo("Asia/Shanghai"))
+        blocked = dispatch_decision(self.config, now=morning, sent_today_count=2, last_event=None)
+        self.assertFalse(blocked.allowed)
+        self.assertEqual(blocked.reason, "daily_limit_reached")
+
+    def test_cron_matches_comma_list(self) -> None:
+        t = datetime(2026, 4, 13, 9, 20, tzinfo=ZoneInfo("Asia/Shanghai"))
+        self.assertTrue(cron_matches("20 9,12,15,18 * * *", t))
+        self.assertFalse(cron_matches("20 10,12,15,18 * * *", t))
+
+    def test_cron_matches_wildcard(self) -> None:
+        t = datetime(2026, 4, 13, 5, 0, tzinfo=ZoneInfo("Asia/Shanghai"))
+        self.assertTrue(cron_matches("0 * * * *", t))
+
+    def test_dispatch_force_bypasses_all_checks(self) -> None:
+        midday = datetime(2026, 4, 13, 12, 0, tzinfo=ZoneInfo("Asia/Shanghai"))
+        result = dispatch_decision(self.config, now=midday, sent_today_count=99, last_event=None, force=True)
+        self.assertTrue(result.allowed)
+        self.assertEqual(result.reason, "forced")
+
     def test_evening_auto_dispatch_requires_special_items(self) -> None:
         try:
             from teacher_content_reminder.pipeline import ContentPipeline

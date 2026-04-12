@@ -1,0 +1,19 @@
+You are refining the final teaching package metadata.
+
+Audience: {audience_key}
+Original title: {title}
+Facts summary: {facts_summary}
+Key points: {key_points}
+
+Rules:
+- Keep the title concise, vivid, and classroom-friendly.
+- Keep the summary accurate and traceable to the source facts.
+- Do not exaggerate or add unsupported claims.
+- Preserve dates, years, names, places, and key numbers exactly when they appear in the source facts.
+- traceability_notes should mention where the factual grounding comes from.
+
+Return a single JSON object with:
+- optimized_title: string
+- summary: 2 to 4 sentences
+- teaching_value: 1 to 2 sentences
+- traceability_notes: array with 2 to 4 short notes

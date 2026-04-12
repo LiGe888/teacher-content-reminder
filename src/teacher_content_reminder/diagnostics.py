@@ -1,11 +1,16 @@
 from __future__ import annotations
 
 from dataclasses import asdict
+import importlib.util
 import os
 
 from teacher_content_reminder.config import AppConfig
 from teacher_content_reminder.llm.factory import build_provider_client
 from teacher_content_reminder.llm.smoke_test import run_smoke_test
+
+
+def _check_fastapi_available() -> bool:
+    return importlib.util.find_spec("fastapi") is not None
 
 
 def build_runtime_report(config: AppConfig) -> dict[str, object]:
@@ -62,6 +67,9 @@ def build_runtime_report(config: AppConfig) -> dict[str, object]:
     if alerting["enabled"] and alerting["secret_env"] and not alerting["secret_present"]:
         missing_items.append(f"Missing env {config.alerting.secret_env} for alert delivery.")
 
+    # Check optional API dependency
+    api_available = _check_fastapi_available()
+
     return {
         "llm": {
             "provider_mode": config.llm.provider,
@@ -77,6 +85,14 @@ def build_runtime_report(config: AppConfig) -> dict[str, object]:
         "delivery": delivery,
         "alerting": alerting,
         "generation": asdict(config.generation),
+        "api": {
+            "available": api_available,
+            "note": (
+                "FastAPI is installed. Run: uvicorn teacher_content_reminder.api:app --reload"
+                if api_available
+                else "FastAPI not installed. Run: pip install -e \".[api]\" to enable the web dashboard."
+            ),
+        },
         "missing_items": missing_items,
         "ready": len(missing_items) == 0,
     }

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from teacher_content_reminder.config import AppConfig
 from teacher_content_reminder.generation.prompts import (
@@ -105,47 +106,53 @@ class GenerationService:
         task_providers["generate_reading_passage"] = provider_name
         task_models["generate_reading_passage"] = model_name
 
-        reading_questions, provider_name, model_name, elapsed = self._run_task(
-            "generate_reading_questions",
-            render_reading_questions_prompt(facts, audience_key, audience, exercise_profile, reading_passage),
-            {
-                "article": article,
-                "audience": audience_key,
-                "facts": {
-                    "summary": facts.summary,
-                    "key_points": facts.key_points,
-                    "keywords": facts.keywords,
-                },
-                "question_count": audience.question_count,
-                "passage": reading_passage,
+        # Run reading questions and cloze test in parallel — they are independent
+        rq_prompt = render_reading_questions_prompt(facts, audience_key, audience, exercise_profile, reading_passage)
+        rq_context = {
+            "article": article,
+            "audience": audience_key,
+            "facts": {
+                "summary": facts.summary,
+                "key_points": facts.key_points,
+                "keywords": facts.keywords,
             },
-            lambda payload: parse_question_list(
-                payload,
-                minimum=audience.question_count,
-                prefix="reading",
-            ),
-        )
-        task_timings["generate_reading_questions"] = elapsed
-        task_providers["generate_reading_questions"] = provider_name
-        task_models["generate_reading_questions"] = model_name
+            "question_count": audience.question_count,
+            "passage": reading_passage,
+        }
+        cloze_prompt = render_cloze_prompt(facts, audience_key, audience, reading_passage)
+        cloze_context = {
+            "article": article,
+            "audience": audience_key,
+            "facts": {"keywords": facts.keywords},
+            "passage": reading_passage,
+            "cloze_blanks": audience.cloze_blanks,
+        }
 
-        (cloze_passage, cloze_questions), provider_name, model_name, elapsed = self._run_task(
-            "generate_cloze_test",
-            render_cloze_prompt(facts, audience_key, audience, reading_passage),
-            {
-                "article": article,
-                "audience": audience_key,
-                "facts": {
-                    "keywords": facts.keywords,
-                },
-                "passage": reading_passage,
-                "cloze_blanks": audience.cloze_blanks,
-            },
-            lambda payload: parse_cloze_payload(payload, minimum=min(4, audience.cloze_blanks)),
-        )
-        task_timings["generate_cloze_test"] = elapsed
-        task_providers["generate_cloze_test"] = provider_name
-        task_models["generate_cloze_test"] = model_name
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            rq_future = pool.submit(
+                self._run_task,
+                "generate_reading_questions",
+                rq_prompt,
+                rq_context,
+                lambda payload: parse_question_list(payload, minimum=audience.question_count, prefix="reading"),
+            )
+            cloze_future = pool.submit(
+                self._run_task,
+                "generate_cloze_test",
+                cloze_prompt,
+                cloze_context,
+                lambda payload: parse_cloze_payload(payload, minimum=min(4, audience.cloze_blanks)),
+            )
+            reading_questions, rq_provider, rq_model, rq_elapsed = rq_future.result()
+            (cloze_passage, cloze_questions), cloze_provider, cloze_model, cloze_elapsed = cloze_future.result()
+
+        task_timings["generate_reading_questions"] = rq_elapsed
+        task_providers["generate_reading_questions"] = rq_provider
+        task_models["generate_reading_questions"] = rq_model
+
+        task_timings["generate_cloze_test"] = cloze_elapsed
+        task_providers["generate_cloze_test"] = cloze_provider
+        task_models["generate_cloze_test"] = cloze_model
 
         package = build_package(
             audience=audience_key,

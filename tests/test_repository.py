@@ -167,6 +167,32 @@ class RepositoryTests(unittest.TestCase):
             self.assertEqual(status_counts["approved"], 1)
             self.assertEqual(recommendation_counts["special"], 1)
 
+    def test_content_hash_dedup(self) -> None:
+        """has_article should detect duplicate content even under a different URL."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            from teacher_content_reminder.utils import hash_text
+
+            repo = SQLiteRepository(Path(tmp_dir) / "test.sqlite3")
+            repo.initialize()
+            generated = _build_preview_item()
+            repo.save_article(generated.preview.article, generated.preview.score)
+
+            # Same content, different URL — should be detected as duplicate
+            content_hash = hash_text(generated.preview.article.raw_text)
+            self.assertTrue(repo.has_article("https://other-url.com/different", content_hash=content_hash))
+
+            # Different content hash — should not be detected as duplicate
+            self.assertFalse(repo.has_article("https://other-url.com/different", content_hash="deadbeef"))
+
+    def test_has_article_by_canonical_url(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            repo = SQLiteRepository(Path(tmp_dir) / "test.sqlite3")
+            repo.initialize()
+            generated = _build_preview_item()
+            repo.save_article(generated.preview.article, generated.preview.score)
+            self.assertTrue(repo.has_article(generated.preview.article.canonical_url))
+            self.assertFalse(repo.has_article("https://totally-unknown.com/article"))
+
 
 if __name__ == "__main__":
     unittest.main()
