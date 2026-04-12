@@ -58,6 +58,7 @@ class AlertService:
                 queue_id=queue_id,
                 package_id=package_id,
                 payload=details,
+                detail_path=None,
             )
             return {"sent": False, "status": "disabled"}
 
@@ -71,6 +72,7 @@ class AlertService:
                 queue_id=queue_id,
                 package_id=package_id,
                 payload=details,
+                detail_path=None,
             )
             return {"sent": False, "status": "disabled"}
 
@@ -83,6 +85,7 @@ class AlertService:
                 queue_id=queue_id,
                 package_id=package_id,
                 payload=details,
+                detail_path=None,
             )
             return {"sent": False, "status": "suppressed"}
 
@@ -126,6 +129,7 @@ class AlertService:
             queue_id=queue_id,
             package_id=package_id,
             payload=details,
+            detail_path=detail_path,
         )
         return {
             "sent": status == "sent",
@@ -155,7 +159,15 @@ class AlertService:
         queue_id: int | None,
         package_id: int | None,
         payload: dict[str, object],
+        detail_path: Path | None,
     ) -> None:
+        log_payload = {
+            "message": message,
+            **payload,
+        }
+        if detail_path:
+            log_payload["detail_filename"] = detail_path.name
+
         self.repository.record_activity_log(
             event_type="alert",
             status=status,
@@ -163,10 +175,7 @@ class AlertService:
             source_name=source_name,
             queue_id=queue_id,
             package_id=package_id,
-            payload={
-                "message": message,
-                **payload,
-            },
+            payload=log_payload,
         )
 
     def _build_client(self, webhook_url: str, secret: str | None) -> DingTalkBotClient:

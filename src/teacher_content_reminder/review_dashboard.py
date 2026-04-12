@@ -242,6 +242,7 @@ def render_review_dashboard(
             "no_discussion_points": "No discussion points.",
             "no_traceability_notes": "No traceability notes.",
             "no_export_links": "No export links yet.",
+            "action_view_alert_report": "View Alert Report",
         },
         "zh": {
             "page_title": "教师内容审核台",
@@ -377,6 +378,7 @@ def render_review_dashboard(
             "no_discussion_points": "暂无讨论点。",
             "no_traceability_notes": "暂无溯源说明。",
             "no_export_links": "暂时还没有可访问的导出链接。",
+            "action_view_alert_report": "查看详情报告",
         },
     }
     translations_json = json.dumps(translations, ensure_ascii=False)
@@ -1193,7 +1195,12 @@ def render_review_dashboard(
         activityListEl.innerHTML = items.map((entry) => {{
           const item = entry.activity;
           const tone = statusClass(item.status);
-          const payload = item.payload && Object.keys(item.payload).length
+          const isAlert = item.event_type === "alert";
+          const detailFile = item.payload?.detail_filename;
+          const alertLink = isAlert && detailFile
+            ? `<div style="margin-top:10px;"><a href="/alerts/${{detailFile}}" target="_blank" style="color:var(--accent);font-weight:600;">🔗 ${{t("action_view_alert_report")}}</a></div>`
+            : "";
+          const payload = (!isAlert && item.payload && Object.keys(item.payload).length)
             ? `<div class="mono">${{escapeHtml(JSON.stringify(item.payload, null, 2))}}</div>`
             : "";
           return `
@@ -1209,6 +1216,7 @@ def render_review_dashboard(
                   <span class="pill">${{escapeHtml(item.created_at || "")}}</span>
                 </div>
               </summary>
+              ${{alertLink}}
               ${{payload}}
             </details>
           `;
