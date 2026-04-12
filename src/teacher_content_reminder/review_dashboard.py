@@ -4,7 +4,10 @@ from dataclasses import asdict, is_dataclass
 from datetime import datetime
 import html
 import json
+import os
+from pathlib import Path
 
+from teacher_content_reminder.config import default_config_path
 from teacher_content_reminder.models import ActivityLogEntry, GeneratedPreviewItem, ReviewQueueItem
 
 
@@ -27,12 +30,46 @@ def generated_preview_payload(item: GeneratedPreviewItem) -> dict[str, object]:
     }
 
 
+def _exports_base_dir() -> Path:
+    return default_config_path().resolve().parent.parent / ".exports"
+
+
+def build_export_urls(export_directory: str) -> dict[str, str]:
+    base_url = os.getenv("ALERT_VIEW_HOST", "").strip().rstrip("/")
+    if not export_directory or not base_url:
+        return {}
+
+    exports_base = _exports_base_dir().resolve()
+    export_path = Path(export_directory)
+    if not export_path.is_absolute():
+        export_path = (exports_base.parent / export_path).resolve()
+    else:
+        export_path = export_path.resolve()
+
+    if not str(export_path).startswith(str(exports_base)):
+        return {}
+
+    files = {
+        "teacher_html": export_path / "teacher_worksheet.html",
+        "student_html": export_path / "student_worksheet.html",
+        "package_json": export_path / "package.json",
+    }
+    urls: dict[str, str] = {}
+    for key, file_path in files.items():
+        if not file_path.exists():
+            continue
+        relative_path = file_path.relative_to(exports_base).as_posix()
+        urls[key] = f"{base_url}/exports/{relative_path}"
+    return urls
+
+
 def review_queue_payload(
     item: ReviewQueueItem,
     generated: GeneratedPreviewItem | None = None,
 ) -> dict[str, object]:
     payload = {
         "queue": to_jsonable(item),
+        "export_urls": build_export_urls(item.export_directory),
     }
     if generated is not None:
         payload["generated"] = generated_preview_payload(generated)
@@ -143,6 +180,9 @@ def render_review_dashboard(
             "summary_sent_note_dynamic": "Today {sent} / {max}. {rule}",
             "summary_pending_note_dynamic": "Recommendations waiting: review={review}, special={special}.",
             "summary_approved_note_dynamic": "Morning {morning} / Evening {evening}.",
+            "summary_weekend_paused": "Today is a weekend. Beta auto-queue is paused; weekday pending review usually lands at {range}.",
+            "summary_review_guidance": "Recommended review: {times}.",
+            "summary_alert_expectation": "Typical weekday failure alerts: {range}.",
             "summary_load_failed": "Summary load failed: {error}",
             "summary_no_failed_activity": "No failed activity right now.",
             "summary_no_dispatch": "No dispatch activity yet.",
@@ -192,11 +232,16 @@ def render_review_dashboard(
             "detail_cloze_answers_title": "Cloze Answers",
             "detail_discussion_points_title": "Discussion Points",
             "detail_traceability_title": "Traceability",
+            "detail_exports_title": "Exports",
+            "detail_export_teacher": "Teacher HTML",
+            "detail_export_student": "Student HTML",
+            "detail_export_package": "Package JSON",
             "no_keywords": "No keywords",
             "no_reading_questions": "No reading questions.",
             "no_cloze_items": "No cloze items.",
             "no_discussion_points": "No discussion points.",
             "no_traceability_notes": "No traceability notes.",
+            "no_export_links": "No export links yet.",
         },
         "zh": {
             "page_title": "教师内容审核台",
@@ -270,6 +315,9 @@ def render_review_dashboard(
             "summary_sent_note_dynamic": "今日已发送 {sent} / {max}。{rule}",
             "summary_pending_note_dynamic": "待审推荐：review={review}，special={special}。",
             "summary_approved_note_dynamic": "早间 {morning} / 晚间 {evening}。",
+            "summary_weekend_paused": "今天是周末，beta 自动抓取暂停；工作日通常会产生 {range} 条待审核内容。",
+            "summary_review_guidance": "建议审核时段：{times}。",
+            "summary_alert_expectation": "工作日通常会有 {range} 条失败告警。",
             "summary_load_failed": "概要加载失败：{error}",
             "summary_no_failed_activity": "当前没有失败或跳过的记录。",
             "summary_no_dispatch": "还没有派发记录。",
@@ -319,11 +367,16 @@ def render_review_dashboard(
             "detail_cloze_answers_title": "完形答案",
             "detail_discussion_points_title": "讨论点",
             "detail_traceability_title": "溯源说明",
+            "detail_exports_title": "导出文件",
+            "detail_export_teacher": "教师版 HTML",
+            "detail_export_student": "学生版 HTML",
+            "detail_export_package": "包数据 JSON",
             "no_keywords": "暂无关键词",
             "no_reading_questions": "暂无阅读题。",
             "no_cloze_items": "暂无完形内容。",
             "no_discussion_points": "暂无讨论点。",
             "no_traceability_notes": "暂无溯源说明。",
+            "no_export_links": "暂时还没有可访问的导出链接。",
         },
     }
     translations_json = json.dumps(translations, ensure_ascii=False)
@@ -1034,6 +1087,9 @@ def render_review_dashboard(
         try {{
           const summary = await fetchJson("/api/dashboard-summary");
           const queueCounts = summary.queue_counts || {{}};
+          const betaOps = summary.beta_ops || {{}};
+          const summaryNow = summary.now ? new Date(summary.now) : null;
+          const isWeekend = summaryNow ? [0, 6].includes(summaryNow.getDay()) : false;
           document.getElementById("summary-pending").textContent = String(queueCounts.pending_review || 0);
           document.getElementById("summary-approved").textContent = String(queueCounts.approved || 0);
           document.getElementById("summary-sent-today").textContent = String(summary.sent_today || 0);
@@ -1049,18 +1105,31 @@ def render_review_dashboard(
             max: summary.schedule?.max_daily_push || 0,
             rule: eveningRule,
           }});
-          document.getElementById("summary-pending-note").textContent = t("summary_pending_note_dynamic", {{
-            review: summary.recommendation_counts?.review || 0,
-            special: summary.recommendation_counts?.special || 0,
-          }});
-          document.getElementById("summary-approved-note").textContent = t("summary_approved_note_dynamic", {{
+          const pendingRange = betaOps.expected_pending_review_per_weekday || "2-5";
+          if (summary.schedule?.weekday_only && isWeekend && !queueCounts.pending_review && !queueCounts.approved) {{
+            document.getElementById("summary-pending-note").textContent = t("summary_weekend_paused", {{ range: pendingRange }});
+          }} else {{
+            document.getElementById("summary-pending-note").textContent = t("summary_pending_note_dynamic", {{
+              review: summary.recommendation_counts?.review || 0,
+              special: summary.recommendation_counts?.special || 0,
+            }});
+          }}
+          const reviewTimes = Array.isArray(betaOps.recommended_review_times)
+            ? betaOps.recommended_review_times.join(" / ")
+            : "";
+          const approvedNote = t("summary_approved_note_dynamic", {{
             morning: summary.schedule?.morning_send_time || "--",
             evening: summary.schedule?.evening_send_time || "--",
           }});
+          document.getElementById("summary-approved-note").textContent =
+            reviewTimes ? `${{approvedNote}} ${{t("summary_review_guidance", {{ times: reviewTimes }})}}` : approvedNote;
           const latestFailed = summary.latest_failed_activity?.message;
           const latestSkipped = summary.latest_skipped_activity?.message;
+          const alertRange = betaOps.expected_failure_alerts_per_weekday || "0-2";
           document.getElementById("summary-alerts-note").textContent =
-            latestFailed || latestSkipped || t("summary_no_failed_activity");
+            latestFailed
+            || latestSkipped
+            || `${{t("summary_no_failed_activity")}} ${{t("summary_alert_expectation", {{ range: alertRange }})}}`;
         }} catch (error) {{
           const message = t("summary_load_failed", {{ error: error.message }});
           document.getElementById("summary-dispatch-note").textContent = message;
@@ -1207,11 +1276,23 @@ def render_review_dashboard(
         const generated = detail.generated;
         const preview = generated.preview;
         const pkg = generated.package;
+        const exportUrls = detail.export_urls || {{}};
         const questions = (pkg.reading_questions || []).map((item) => `<li>${{escapeHtml(item.stem)}} <strong>${{escapeHtml(item.answer)}}</strong></li>`).join("");
         const clozeQuestions = (pkg.cloze_questions || []).map((item) => `<li>${{escapeHtml(item.question_id)}} <strong>${{escapeHtml(item.answer)}}</strong></li>`).join("");
         const keywords = (pkg.keywords || []).map((item) => `<span class="pill">${{escapeHtml(item)}}</span>`).join("");
         const traceability = (pkg.traceability_notes || []).map((item) => `<li>${{escapeHtml(item)}}</li>`).join("");
         const discussion = (pkg.discussion_points || []).map((item) => `<li>${{escapeHtml(item)}}</li>`).join("");
+        const exportLinks = [
+          exportUrls.teacher_html
+            ? `<li><a href="${{escapeHtml(exportUrls.teacher_html)}}" target="_blank" rel="noreferrer">${{escapeHtml(t("detail_export_teacher"))}}</a></li>`
+            : "",
+          exportUrls.student_html
+            ? `<li><a href="${{escapeHtml(exportUrls.student_html)}}" target="_blank" rel="noreferrer">${{escapeHtml(t("detail_export_student"))}}</a></li>`
+            : "",
+          exportUrls.package_json
+            ? `<li><a href="${{escapeHtml(exportUrls.package_json)}}" target="_blank" rel="noreferrer">${{escapeHtml(t("detail_export_package"))}}</a></li>`
+            : "",
+        ].filter(Boolean).join("");
         const image = preview.article.lead_image_url
           ? `<div class="card"><h3>${{escapeHtml(t("detail_lead_image_title"))}}</h3><img alt="cover" src="${{escapeHtml(preview.article.lead_image_url)}}" style="width:100%;border-radius:14px;display:block;" /></div>`
           : "";
@@ -1261,6 +1342,10 @@ def render_review_dashboard(
             <div class="card">
               <h3>${{escapeHtml(t("detail_traceability_title"))}}</h3>
               <ul>${{traceability || `<li>${{escapeHtml(t("no_traceability_notes"))}}</li>`}}</ul>
+            </div>
+            <div class="card">
+              <h3>${{escapeHtml(t("detail_exports_title"))}}</h3>
+              <ul>${{exportLinks || `<li>${{escapeHtml(t("no_export_links"))}}</li>`}}</ul>
             </div>
           </div>
         `;

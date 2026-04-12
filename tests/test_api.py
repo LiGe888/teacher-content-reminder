@@ -36,6 +36,8 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(summary.status_code, 200)
         self.assertIn("queue_counts", summary.json())
         self.assertIn("schedule", summary.json())
+        self.assertIn("weekday_only", summary.json()["schedule"])
+        self.assertIn("beta_ops", summary.json())
         self.assertEqual(alerts.status_code, 200)
 
 

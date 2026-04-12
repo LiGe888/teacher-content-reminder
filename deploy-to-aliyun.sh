@@ -157,11 +157,13 @@ mkdir -p /etc/nginx/conf.d
 render_nginx_conf "${REMOTE_DIR}/deploy/nginx/teacher-content-reminder.conf" "/etc/nginx/conf.d/teacher-content-reminder.conf"
 
 systemctl daemon-reload
-systemctl enable --now teacher-content-api
-systemctl enable --now teacher-content-scheduler.timer
+systemctl enable teacher-content-api
+systemctl enable teacher-content-scheduler.timer
 nginx -t
-systemctl enable --now nginx
-systemctl reload nginx
+systemctl enable nginx
+systemctl restart teacher-content-api
+systemctl restart teacher-content-scheduler.timer
+systemctl restart nginx
 
 if [[ "${RUN_POST_CHECK}" == "1" ]]; then
   run_as_app_user "cd '${REMOTE_DIR}' && APP_DIR='${REMOTE_DIR}' ./deploy/scripts/post_deploy_check.sh"

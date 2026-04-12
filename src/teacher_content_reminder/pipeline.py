@@ -241,10 +241,22 @@ class ContentPipeline:
             "latest_failed_activity": latest_failed_activity[0] if latest_failed_activity else None,
             "latest_skipped_activity": latest_skipped_activity[0] if latest_skipped_activity else None,
             "schedule": {
+                "weekday_only": self.config.schedule.weekday_only,
                 "morning_send_time": self.config.schedule.morning_send_time,
                 "evening_send_time": self.config.schedule.evening_send_time,
                 "evening_requires_special": self.config.schedule.evening_requires_special,
                 "max_daily_push": self.config.project.max_daily_push,
+            },
+            "beta_ops": {
+                "auto_queue_sources": [
+                    source.name for source in self.config.enabled_sources if source.auto_queue_enabled
+                ],
+                "manual_only_sources": [
+                    source.name for source in self.config.enabled_sources if not source.auto_queue_enabled
+                ],
+                "recommended_review_times": ["07:50-08:20", "12:10-12:30", "16:30-17:00"],
+                "expected_pending_review_per_weekday": "2-5",
+                "expected_failure_alerts_per_weekday": "0-2",
             },
         }
 

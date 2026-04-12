@@ -1,5 +1,10 @@
 from datetime import timedelta
+import os
+from pathlib import Path
+import shutil
+import tempfile
 import unittest
+from unittest.mock import patch
 
 from teacher_content_reminder.models import (
     ActivityLogEntry,
@@ -104,6 +109,12 @@ def _build_generated_preview() -> GeneratedPreviewItem:
 class ReviewDashboardTests(unittest.TestCase):
     def test_payload_helpers_serialize_preview_and_queue(self) -> None:
         generated = _build_generated_preview()
+        exports_root = Path(__file__).resolve().parents[1] / ".exports"
+        temp_dir = tempfile.mkdtemp(prefix="review-dashboard-", dir=exports_root)
+        export_dir = Path(temp_dir)
+        (export_dir / "teacher_worksheet.html").write_text("<html>teacher</html>", encoding="utf-8")
+        (export_dir / "student_worksheet.html").write_text("<html>student</html>", encoding="utf-8")
+        (export_dir / "package.json").write_text("{}", encoding="utf-8")
         queue_item = ReviewQueueItem(
             queue_id=5,
             package_id=generated.package.package_id or 7,
@@ -116,19 +127,25 @@ class ReviewDashboardTests(unittest.TestCase):
             review_recommendation="special",
             status="approved",
             reviewer_note="Strong beta candidate.",
-            export_directory=".exports/example",
+            export_directory=str(export_dir),
             created_at=utc_now(),
             updated_at=utc_now(),
             approved_at=utc_now(),
         )
 
         generated_payload = generated_preview_payload(generated)
-        queue_payload = review_queue_payload(queue_item, generated=generated)
+        try:
+            with patch.dict(os.environ, {"ALERT_VIEW_HOST": "http://47.98.198.2"}, clear=False):
+                queue_payload = review_queue_payload(queue_item, generated=generated)
+        finally:
+            shutil.rmtree(export_dir, ignore_errors=True)
 
         self.assertEqual(generated_payload["package"]["optimized_title"], "Space Science for Class")
         self.assertEqual(queue_payload["queue"]["queue_id"], 5)
         self.assertEqual(queue_payload["generated"]["preview"]["article"]["source_name"], "nasa_news")
         self.assertIn("generated_at", generated_payload["package"])
+        self.assertIn("teacher_html", queue_payload["export_urls"])
+        self.assertIn("/exports/", queue_payload["export_urls"]["teacher_html"])
 
         activity_entry = ActivityLogEntry(
             log_id=9,
