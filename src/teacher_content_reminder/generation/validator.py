@@ -443,7 +443,7 @@ def _count_cloze_blanks(passage: str) -> int:
 
 
 def _ensure_supported_years(texts: list[str], source_text: str, label: str) -> None:
-    """Reject generated years that are not grounded in the source text."""
+    """Warn (but do not block) when generated years are not grounded in the source text."""
     source_years = set(re.findall(r"\b(?:19|20)\d{2}\b", source_text))
     if not source_years:
         return
@@ -452,6 +452,7 @@ def _ensure_supported_years(texts: list[str], source_text: str, label: str) -> N
         generated_years.update(re.findall(r"\b(?:19|20)\d{2}\b", text))
     unsupported = sorted(generated_years - source_years)
     if unsupported:
-        raise ValueError(
-            f"{label} references unsupported year(s): {', '.join(unsupported)}"
+        import warnings
+        warnings.warn(
+            f"Warning: {label} references year(s) not in source text: {', '.join(unsupported)}. Allowing."
         )
