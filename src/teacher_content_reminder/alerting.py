@@ -210,20 +210,10 @@ class AlertService:
             lines.extend(
                 [
                     "",
-                    f"🔗 [Open alert detail]({detail_url})",
+                    "---",
+                    f"🔗 [>>> 点击查看完整详情 <<<]({detail_url})",
                 ]
             )
-        payload_text = json.dumps(payload, ensure_ascii=False, indent=2, default=str)
-        if len(payload_text) > 1600:
-            payload_text = payload_text[:1600] + "\n... (truncated)"
-        lines.extend(
-            [
-                "",
-                "```json",
-                payload_text,
-                "```",
-            ]
-        )
         return "\n".join(lines)
 
     def _save_html_report(
