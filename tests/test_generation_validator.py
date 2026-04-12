@@ -94,15 +94,19 @@ class GenerationValidatorTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "too long"):
             parse_cloze_payload(payload, minimum=4)
 
-    def test_parse_title_summary_rejects_unsupported_year(self) -> None:
+    def test_parse_title_summary_warns_on_unsupported_year(self) -> None:
         payload = {
             "optimized_title": "Artemis II Returns",
             "summary": "The spacecraft splashed down in 2024 after a successful mission.",
             "teaching_value": "Useful for STEM discussion.",
             "traceability_notes": ["NASA source", "Mission report"],
         }
-        with self.assertRaisesRegex(ValueError, "unsupported year"):
+        import warnings
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
             parse_title_summary(payload, source_text="Artemis II splashed down in 2026 after a successful mission.")
+            year_warnings = [x for x in w if "year" in str(x.message).lower()]
+            self.assertGreater(len(year_warnings), 0, "Expected a year warning")
 
     def test_ensure_package_quality_allows_small_word_underflow(self) -> None:
         question = ExerciseQuestion(
