@@ -224,14 +224,21 @@ export DEEPSEEK_API_KEY=...
 - `86 - 91.9` 标记为可自动发送候选
 - `>= 92` 标记为特别推荐候选
 - 抓取池偏向知识性和可教学性：
-- `NASA` 工作日白天每 `2` 小时一次
-- `Science News` 工作日每天 `4` 次
-- `Smithsonian` 工作日每天 `3` 次
+- `NASA` 每天白天每 `2` 小时一次
+- `Science News` 每天 `4` 次
+- `Smithsonian` 每天 `3` 次
 - `AP` 默认不进入自动抓取池，只保留人工或强制入队
-- 工作日默认发送窗口为 `07:40` 和 `20:40`
+- 默认发送窗口为 `07:40` 和 `20:40`
 - 晚间窗口默认只允许 `special` 内容自动发送
 - 每天最多 `2` 条，且两次推送至少间隔 `8` 小时
 - `project.default_review_mode = "manual"` 时，仍然会先进审核队列，适合 beta 阶段
+
+周末限制现在已经拆成两个显式开关，位于 `config/default.toml` 的 `[schedule]`：
+
+- `weekend_auto_queue_enabled`
+- `weekend_send_enabled`
+
+默认两个都是 `true`，也就是周末允许自动抓取、也允许自动发送；如果后面你想临时收紧，只改这两个值即可。
 
 运行单元测试：
 

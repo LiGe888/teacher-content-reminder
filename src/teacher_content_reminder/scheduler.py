@@ -43,6 +43,8 @@ def due_source_names(config: AppConfig, current: datetime, force: bool = False) 
     if force:
         return [source.name for source in config.enabled_sources]
     localized = localize_datetime(current, config.project.timezone)
+    if localized.weekday() >= 5 and not config.schedule.weekend_auto_queue_enabled:
+        return []
     return [
         source.name
         for source in config.enabled_sources
@@ -80,8 +82,8 @@ def dispatch_decision(
     localized = localize_datetime(now, config.project.timezone)
     if force:
         return DispatchDecision(True, "forced", slot="forced")
-    if config.schedule.weekday_only and localized.weekday() >= 5:
-        return DispatchDecision(False, "outside_weekday_window")
+    if localized.weekday() >= 5 and not config.schedule.weekend_send_enabled:
+        return DispatchDecision(False, "weekend_send_disabled")
     if sent_today_count >= config.project.max_daily_push:
         return DispatchDecision(False, "daily_limit_reached")
     slot = _current_slot(config, localized)

@@ -67,7 +67,9 @@ class ReviewConfig:
 
 @dataclass(slots=True)
 class ScheduleConfig:
-    weekday_only: bool = True
+    weekday_only: bool = False
+    weekend_auto_queue_enabled: bool = True
+    weekend_send_enabled: bool = True
     morning_send_time: str = "07:30"
     evening_send_time: str = "20:30"
     allow_evening_send: bool = True
@@ -190,7 +192,15 @@ def load_config(path: str | Path | None = None) -> AppConfig:
     delivery = DeliveryConfig(**raw["delivery"])
     alerting = AlertingConfig(**raw.get("alerting", {}))
     review = ReviewConfig(**raw.get("review", {}))
-    schedule = ScheduleConfig(**raw.get("schedule", {}))
+    schedule_raw = dict(raw.get("schedule", {}))
+    legacy_weekday_only = bool(schedule_raw.pop("weekday_only", False))
+    schedule_raw.setdefault("weekend_auto_queue_enabled", not legacy_weekday_only)
+    schedule_raw.setdefault("weekend_send_enabled", not legacy_weekday_only)
+    schedule_raw["weekday_only"] = (
+        not bool(schedule_raw.get("weekend_auto_queue_enabled", True))
+        and not bool(schedule_raw.get("weekend_send_enabled", True))
+    )
+    schedule = ScheduleConfig(**schedule_raw)
     llm_raw = dict(raw.get("llm", {}))
     llm_raw["fallback_providers"] = tuple(llm_raw.get("fallback_providers", ()))
     llm_raw["task_routes"] = {

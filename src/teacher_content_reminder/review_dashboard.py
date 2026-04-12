@@ -1106,7 +1106,7 @@ def render_review_dashboard(
             rule: eveningRule,
           }});
           const pendingRange = betaOps.expected_pending_review_per_weekday || "2-5";
-          if (summary.schedule?.weekday_only && isWeekend && !queueCounts.pending_review && !queueCounts.approved) {{
+          if (summary.schedule?.weekend_auto_queue_enabled === false && isWeekend && !queueCounts.pending_review && !queueCounts.approved) {{
             document.getElementById("summary-pending-note").textContent = t("summary_weekend_paused", {{ range: pendingRange }});
           }} else {{
             document.getElementById("summary-pending-note").textContent = t("summary_pending_note_dynamic", {{

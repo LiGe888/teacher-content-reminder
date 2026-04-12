@@ -59,7 +59,8 @@ special_push_score = 92
 limit_per_source = 1
 
 [schedule]
-weekday_only = true
+weekend_auto_queue_enabled = true
+weekend_send_enabled = true
 morning_send_time = "07:40"
 evening_send_time = "20:40"
 allow_evening_send = true
@@ -138,7 +139,7 @@ entry_url = "https://www.nasa.gov/news-release/feed/"
 enabled = true
 auto_queue_enabled = true
 priority = 10
-schedule_cron = "10 8,10,12,14,16,18,20 * * 1,2,3,4,5"
+schedule_cron = "10 8,10,12,14,16,18,20 * * *"
 
 [[sources]]
 name = "science_news"
@@ -148,7 +149,7 @@ entry_url = "https://www.sciencenews.org/"
 enabled = true
 auto_queue_enabled = true
 priority = 9
-schedule_cron = "20 9,12,15,18 * * 1,2,3,4,5"
+schedule_cron = "20 9,12,15,18 * * *"
 
 [[sources]]
 name = "smithsonian_science"
@@ -158,7 +159,7 @@ entry_url = "https://www.smithsonianmag.com/science-nature/"
 enabled = true
 auto_queue_enabled = true
 priority = 8
-schedule_cron = "35 10,14,19 * * 1,2,3,4,5"
+schedule_cron = "35 10,14,19 * * *"
 
 [[sources]]
 name = "ap_highlights"
@@ -168,4 +169,4 @@ entry_url = "https://apnews.com/"
 enabled = true
 auto_queue_enabled = false
 priority = 6
-schedule_cron = "50 9,13,17 * * 1,2,3,4,5"
+schedule_cron = "50 9,13,17 * * *"

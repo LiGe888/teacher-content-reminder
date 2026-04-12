@@ -242,6 +242,8 @@ class ContentPipeline:
             "latest_skipped_activity": latest_skipped_activity[0] if latest_skipped_activity else None,
             "schedule": {
                 "weekday_only": self.config.schedule.weekday_only,
+                "weekend_auto_queue_enabled": self.config.schedule.weekend_auto_queue_enabled,
+                "weekend_send_enabled": self.config.schedule.weekend_send_enabled,
                 "morning_send_time": self.config.schedule.morning_send_time,
                 "evening_send_time": self.config.schedule.evening_send_time,
                 "evening_requires_special": self.config.schedule.evening_requires_special,

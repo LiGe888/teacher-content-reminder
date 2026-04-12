@@ -152,6 +152,23 @@ class SchedulerTests(unittest.TestCase):
         self.assertNotIn("ap_highlights", due_source_names(self.config, current=ap_time))
         self.assertTrue(cron_matches("50 9,13,17 * * 1,2,3,4,5", ap_time))
 
+    def test_due_source_names_allow_weekend_by_default(self) -> None:
+        saturday_time = datetime(2026, 4, 18, 10, 10, tzinfo=ZoneInfo("Asia/Shanghai"))
+        self.assertIn("nasa_news", due_source_names(self.config, current=saturday_time))
+
+    def test_due_source_names_can_disable_weekend_auto_queue(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            temp_config = Path(tmp_dir) / "config.toml"
+            content = Path("config/default.toml").read_text(encoding="utf-8").replace(
+                "weekend_auto_queue_enabled = true",
+                "weekend_auto_queue_enabled = false",
+                1,
+            )
+            temp_config.write_text(content, encoding="utf-8")
+            config = load_config(temp_config)
+            saturday_time = datetime(2026, 4, 18, 10, 10, tzinfo=ZoneInfo("Asia/Shanghai"))
+            self.assertNotIn("nasa_news", due_source_names(config, current=saturday_time))
+
     def test_force_due_sources_includes_manual_pool(self) -> None:
         force_time = datetime(2026, 4, 13, 11, 0, tzinfo=ZoneInfo("Asia/Shanghai"))
         targets = due_source_names(self.config, current=force_time, force=True)
@@ -186,6 +203,24 @@ class SchedulerTests(unittest.TestCase):
         gap_blocked = dispatch_decision(self.config, now=morning, sent_today_count=1, last_event=recent_event)
         self.assertFalse(gap_blocked.allowed)
         self.assertEqual(gap_blocked.reason, "minimum_gap_not_reached")
+
+    def test_dispatch_allows_weekend_by_default_and_can_be_disabled(self) -> None:
+        weekend_morning = datetime(2026, 4, 18, 7, 40, tzinfo=ZoneInfo("Asia/Shanghai"))
+        allowed = dispatch_decision(self.config, now=weekend_morning, sent_today_count=0, last_event=None)
+        self.assertTrue(allowed.allowed)
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            temp_config = Path(tmp_dir) / "config.toml"
+            content = Path("config/default.toml").read_text(encoding="utf-8").replace(
+                "weekend_send_enabled = true",
+                "weekend_send_enabled = false",
+                1,
+            )
+            temp_config.write_text(content, encoding="utf-8")
+            config = load_config(temp_config)
+            blocked = dispatch_decision(config, now=weekend_morning, sent_today_count=0, last_event=None)
+            self.assertFalse(blocked.allowed)
+            self.assertEqual(blocked.reason, "weekend_send_disabled")
 
     def test_evening_auto_dispatch_requires_special_items(self) -> None:
         try:
