@@ -123,6 +123,7 @@ def render_review_dashboard(
             "summary_dispatch_note": "No dispatch activity yet.",
             "summary_alerts_title": "Alerts",
             "summary_alerts_note": "No failed activity right now.",
+            "summary_alerts_action": "Click to view full alert history.",
             "label_source": "Source",
             "label_audience": "Audience",
             "label_provider": "Provider",
@@ -259,6 +260,7 @@ def render_review_dashboard(
             "summary_dispatch_note": "还没有派发记录。",
             "summary_alerts_title": "告警",
             "summary_alerts_note": "当前没有失败或跳过的记录。",
+            "summary_alerts_action": "点击查看完整告警历史。",
             "label_source": "来源",
             "label_audience": "适用人群",
             "label_provider": "模型提供方",
@@ -794,7 +796,7 @@ def render_review_dashboard(
           <strong id="summary-dispatch-status">none</strong>
           <p id="summary-dispatch-note" data-i18n="summary_dispatch_note">No dispatch activity yet.</p>
         </article>
-        <article class="hero summary-card">
+        <article class="hero summary-card" style="cursor:pointer;" onclick="window.location.href='/alerts'">
           <h2 data-i18n="summary_alerts_title">Alerts</h2>
           <strong id="summary-alerts">0</strong>
           <p id="summary-alerts-note" data-i18n="summary_alerts_note">No failed activity right now.</p>
@@ -1125,13 +1127,9 @@ def render_review_dashboard(
           }});
           document.getElementById("summary-approved-note").textContent =
             reviewTimes ? `${{approvedNote}} ${{t("summary_review_guidance", {{ times: reviewTimes }})}}` : approvedNote;
-          const latestFailed = summary.latest_failed_activity?.message;
-          const latestSkipped = summary.latest_skipped_activity?.message;
-          const alertRange = betaOps.expected_failure_alerts_per_weekday || "0-2";
-          document.getElementById("summary-alerts-note").textContent =
-            latestFailed
-            || latestSkipped
-            || `${{t("summary_no_failed_activity")}} ${{t("summary_alert_expectation", {{ range: alertRange }})}}`;
+           const alertCount = (summary.failed_activity_count || 0) + (summary.skipped_activity_count || 0);
+           document.getElementById("summary-alerts-note").textContent =
+             alertCount > 0 ? t("summary_alerts_action") : t("summary_no_failed_activity");
         }} catch (error) {{
           const message = t("summary_load_failed", {{ error: error.message }});
           document.getElementById("summary-dispatch-note").textContent = message;
@@ -1192,35 +1190,36 @@ def render_review_dashboard(
           activityListEl.innerHTML = `<div class="empty">${{escapeHtml(t("activity_empty"))}}</div>`;
           return;
         }}
-        activityListEl.innerHTML = items.map((entry) => {{
+        activityListEl.innerHTML = items.map((entry) => {
           const item = entry.activity;
           const tone = statusClass(item.status);
           const isAlert = item.event_type === "alert";
           const detailFile = item.payload?.detail_filename;
+          const itemTitle = isAlert ? `Alert: ${item.source_name || t("system")}` : item.message;
           const alertLink = isAlert && detailFile
-            ? `<div style="margin-top:10px;"><a href="/alerts/${{detailFile}}" target="_blank" style="color:var(--accent);font-weight:600;">🔗 ${{t("action_view_alert_report")}}</a></div>`
+            ? `<div style="margin-top:10px;"><a href="/alerts/${detailFile}" target="_blank" style="color:var(--accent);font-weight:600;">🔗 ${t("action_view_alert_report")}</a></div>`
             : "";
           const payload = (!isAlert && item.payload && Object.keys(item.payload).length)
-            ? `<div class="mono">${{escapeHtml(JSON.stringify(item.payload, null, 2))}}</div>`
+            ? `<div class="mono">${escapeHtml(JSON.stringify(item.payload, null, 2))}</div>`
             : "";
           return `
-            <details class="activity-item ${{tone}}">
+            <details class="activity-item ${tone}">
               <summary>
                 <div class="activity-head">
-                  <strong>${{escapeHtml(item.message)}}</strong>
-                  <span class="pill">${{escapeHtml(statusLabel(item.status))}}</span>
+                  <strong>${escapeHtml(itemTitle)}</strong>
+                  <span class="pill">${escapeHtml(statusLabel(item.status))}</span>
                 </div>
                 <div class="queue-meta">
-                  <span class="pill">${{escapeHtml(eventLabel(item.event_type))}}</span>
-                  <span class="pill">${{escapeHtml(item.source_name || t("system"))}}</span>
-                  <span class="pill">${{escapeHtml(item.created_at || "")}}</span>
+                  <span class="pill">${escapeHtml(eventLabel(item.event_type))}</span>
+                  <span class="pill">${escapeHtml(item.source_name || t("system"))}</span>
+                  <span class="pill">${escapeHtml(item.created_at || "")}</span>
                 </div>
               </summary>
-              ${{alertLink}}
-              ${{payload}}
+              ${alertLink}
+              ${payload}
             </details>
           `;
-        }}).join("");
+        }).join("");
       }}
 
       async function loadQueue() {{
