@@ -1190,36 +1190,36 @@ def render_review_dashboard(
           activityListEl.innerHTML = `<div class="empty">${{escapeHtml(t("activity_empty"))}}</div>`;
           return;
         }}
-        activityListEl.innerHTML = items.map((entry) => {
+        activityListEl.innerHTML = items.map((entry) => {{
           const item = entry.activity;
           const tone = statusClass(item.status);
           const isAlert = item.event_type === "alert";
           const detailFile = item.payload?.detail_filename;
-          const itemTitle = isAlert ? `Alert: ${item.source_name || t("system")}` : item.message;
+          const itemTitle = isAlert ? `Alert: ${{item.source_name || t("system")}}` : item.message;
           const alertLink = isAlert && detailFile
-            ? `<div style="margin-top:10px;"><a href="/alerts/${detailFile}" target="_blank" style="color:var(--accent);font-weight:600;">🔗 ${t("action_view_alert_report")}</a></div>`
+            ? `<div style="margin-top:10px;"><a href="/alerts/${{detailFile}}" target="_blank" style="color:var(--accent);font-weight:600;">🔗 ${{t("action_view_alert_report")}}</a></div>`
             : "";
           const payload = (!isAlert && item.payload && Object.keys(item.payload).length)
-            ? `<div class="mono">${escapeHtml(JSON.stringify(item.payload, null, 2))}</div>`
+            ? `<div class="mono">${{escapeHtml(JSON.stringify(item.payload, null, 2))}}</div>`
             : "";
           return `
-            <details class="activity-item ${tone}">
+            <details class="activity-item ${{tone}}">
               <summary>
                 <div class="activity-head">
-                  <strong>${escapeHtml(itemTitle)}</strong>
-                  <span class="pill">${escapeHtml(statusLabel(item.status))}</span>
+                  <strong>${{escapeHtml(itemTitle)}}</strong>
+                  <span class="pill">${{escapeHtml(statusLabel(item.status))}}</span>
                 </div>
                 <div class="queue-meta">
-                  <span class="pill">${escapeHtml(eventLabel(item.event_type))}</span>
-                  <span class="pill">${escapeHtml(item.source_name || t("system"))}</span>
-                  <span class="pill">${escapeHtml(item.created_at || "")}</span>
+                  <span class="pill">${{escapeHtml(eventLabel(item.event_type))}}</span>
+                  <span class="pill">${{escapeHtml(item.source_name || t("system"))}}</span>
+                  <span class="pill">${{escapeHtml(item.created_at || "")}}</span>
                 </div>
               </summary>
-              ${alertLink}
-              ${payload}
+              ${{alertLink}}
+              ${{payload}}
             </details>
           `;
-        }).join("");
+        }}).join("");
       }}
 
       async function loadQueue() {{
