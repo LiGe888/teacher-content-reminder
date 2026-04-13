@@ -355,7 +355,7 @@ class ContentPipeline:
         reviewer_note: str = "",
         send: bool = False,
         export_dir: str = ".exports",
-        export_formats: tuple[str, ...] = ("markdown", "html", "json"),
+        export_formats: tuple[str, ...] = ("markdown", "html", "json", "pdf"),
     ) -> dict[str, object]:
         item = self.repository.get_review_queue_item(queue_id)
         if item is None:
@@ -408,7 +408,7 @@ class ContentPipeline:
         queue_id: int,
         send: bool = False,
         export_dir: str = ".exports",
-        export_formats: tuple[str, ...] = ("markdown", "html", "json"),
+        export_formats: tuple[str, ...] = ("markdown", "html", "json", "pdf"),
         force: bool = False,
     ) -> dict[str, object]:
         queue_item = self.repository.get_review_queue_item(queue_id)
@@ -520,7 +520,7 @@ class ContentPipeline:
         force: bool = False,
         max_items: int = 1,
         export_dir: str = ".exports",
-        export_formats: tuple[str, ...] = ("markdown", "html", "json"),
+        export_formats: tuple[str, ...] = ("markdown", "html", "json", "pdf"),
     ) -> dict[str, object]:
         current = now or local_now(self.config.project.timezone)
         primary_channel = self._delivery_channels()[0]
@@ -622,7 +622,7 @@ class ContentPipeline:
         force_dispatch: bool = False,
         max_dispatch_items: int = 1,
         export_dir: str = ".exports",
-        export_formats: tuple[str, ...] = ("markdown", "html", "json"),
+        export_formats: tuple[str, ...] = ("markdown", "html", "json", "pdf"),
     ) -> dict[str, object]:
         current = now or local_now(self.config.project.timezone)
         try:

@@ -63,7 +63,7 @@ def build_parser() -> argparse.ArgumentParser:
     generate_parser.add_argument("--limit", type=int, default=1)
     generate_parser.add_argument("--persist", action="store_true")
     generate_parser.add_argument("--export-dir", default=None)
-    generate_parser.add_argument("--export-formats", default="markdown,html,json")
+    generate_parser.add_argument("--export-formats", default="markdown,html,json,pdf")
     generate_parser.add_argument("--json", action="store_true")
 
     export_parser = subparsers.add_parser("export-preview")
@@ -74,7 +74,7 @@ def build_parser() -> argparse.ArgumentParser:
     export_parser.add_argument("--limit", type=int, default=1)
     export_parser.add_argument("--persist", action="store_true")
     export_parser.add_argument("--output-dir", default=".exports")
-    export_parser.add_argument("--formats", default="markdown,html,json")
+    export_parser.add_argument("--formats", default="markdown,html,json,pdf")
     export_parser.add_argument("--json", action="store_true")
 
     queue_parser = subparsers.add_parser("queue-source")
@@ -96,7 +96,7 @@ def build_parser() -> argparse.ArgumentParser:
     approve_parser.add_argument("--note", default="")
     approve_parser.add_argument("--send", action="store_true")
     approve_parser.add_argument("--export-dir", default=".exports")
-    approve_parser.add_argument("--export-formats", default="markdown,html,json")
+    approve_parser.add_argument("--export-formats", default="markdown,html,json,pdf")
     approve_parser.add_argument("--json", action="store_true")
 
     reject_parser = subparsers.add_parser("review-reject")
@@ -110,7 +110,7 @@ def build_parser() -> argparse.ArgumentParser:
     dispatch_parser.add_argument("--max-items", type=int, default=1)
     dispatch_parser.add_argument("--now", default=None)
     dispatch_parser.add_argument("--export-dir", default=".exports")
-    dispatch_parser.add_argument("--export-formats", default="markdown,html,json")
+    dispatch_parser.add_argument("--export-formats", default="markdown,html,json,pdf")
     dispatch_parser.add_argument("--json", action="store_true")
 
     scheduled_parser = subparsers.add_parser("run-scheduled")
@@ -125,7 +125,7 @@ def build_parser() -> argparse.ArgumentParser:
     scheduled_parser.add_argument("--force-dispatch", action="store_true")
     scheduled_parser.add_argument("--now", default=None)
     scheduled_parser.add_argument("--export-dir", default=".exports")
-    scheduled_parser.add_argument("--export-formats", default="markdown,html,json")
+    scheduled_parser.add_argument("--export-formats", default="markdown,html,json,pdf")
     scheduled_parser.add_argument("--json", action="store_true")
 
     send_parser = subparsers.add_parser("send-preview")
@@ -136,7 +136,7 @@ def build_parser() -> argparse.ArgumentParser:
     send_parser.add_argument("--limit", type=int, default=1)
     send_parser.add_argument("--persist", action="store_true")
     send_parser.add_argument("--export-dir", default=".exports")
-    send_parser.add_argument("--export-formats", default="markdown,html,json")
+    send_parser.add_argument("--export-formats", default="markdown,html,json,pdf")
     send_parser.add_argument("--send", action="store_true")
     send_parser.add_argument("--allow-low-score", action="store_true")
     send_parser.add_argument("--json", action="store_true")
