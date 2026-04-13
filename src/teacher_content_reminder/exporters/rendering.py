@@ -146,6 +146,7 @@ def render_print_html(item: GeneratedPreviewItem, variant: str = "teacher") -> t
     )
     points = sorted(set(reading_points + cloze_points))
     points_badges = "".join(f'<span class="badge exam-badge">{escape(point)}</span>' for point in points)
+    download_pdf_name = f"{variant}_worksheet.pdf"
     if variant == "teacher":
         answer_rows = "".join(
             f"<tr><td>Reading {index}</td><td>{escape(question.answer)}</td><td>{escape(question.explanation)}</td></tr>"
@@ -246,6 +247,25 @@ def render_print_html(item: GeneratedPreviewItem, variant: str = "teacher") -> t
       font-size: 0.95rem;
       margin-bottom: 20px;
     }}
+    .export-actions {{
+      display: flex;
+      gap: 10px;
+      margin: 10px 0 18px;
+      flex-wrap: wrap;
+    }}
+    .export-btn {{
+      display: inline-block;
+      border-radius: 999px;
+      border: 1px solid #0f766e;
+      background: #0f766e;
+      color: #fff;
+      text-decoration: none;
+      padding: 8px 14px;
+      font-size: 0.92rem;
+    }}
+    .export-btn:hover {{
+      opacity: 0.92;
+    }}
     .cover {{
       width: 100%;
       max-height: 380px;
@@ -322,6 +342,9 @@ def render_print_html(item: GeneratedPreviewItem, variant: str = "teacher") -> t
 <body>
   <main>
     <h1>{escape(title)}</h1>
+    <div class="export-actions">
+      <a class="export-btn" href="{escape(download_pdf_name)}" download="{escape(download_pdf_name)}">Download PDF</a>
+    </div>
     <div class="meta">
       Template: {escape(variant)} |
       Audience: {escape(package.audience)} |
