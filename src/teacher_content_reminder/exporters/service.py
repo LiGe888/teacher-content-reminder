@@ -113,6 +113,30 @@ class ExportService:
                 "error": (completed.stderr or completed.stdout or "").strip()[:500],
             }
 
+        # Fallback: use Playwright Chromium when available.
+        try:
+            from playwright.sync_api import sync_playwright  # type: ignore
+
+            with sync_playwright() as playwright:
+                browser = playwright.chromium.launch()
+                page = browser.new_page()
+                page.goto(html_path.resolve().as_uri(), wait_until="load")
+                page.pdf(
+                    path=str(pdf_path),
+                    format="A4",
+                    print_background=True,
+                    margin={"top": "12mm", "bottom": "12mm", "left": "10mm", "right": "10mm"},
+                )
+                browser.close()
+            if pdf_path.exists():
+                return {"path": str(pdf_path.resolve()), "status": "ok", "engine": "playwright"}
+        except Exception as exc:  # pragma: no cover - optional dependency fallback
+            return {
+                "status": "failed",
+                "engine": "playwright",
+                "error": str(exc)[:500],
+            }
+
         return {
             "status": "unavailable",
             "reason": "No PDF engine found. Use worksheet.html and print to PDF from a browser.",

@@ -168,6 +168,12 @@ def render_review_dashboard(
             "status_none": "none",
             "recommendation_review": "review",
             "recommendation_special": "special",
+            "recommendation_auto_send": "auto_send",
+            "recommendation_discard": "discard",
+            "tag_low_score": "LOW_SCORE",
+            "tag_score_high": "high",
+            "tag_score_mid": "mid",
+            "tag_score_low": "low",
             "event_scheduled_run": "scheduled_run",
             "event_queue_item": "queue_item",
             "event_review_action": "review_action",
@@ -305,6 +311,12 @@ def render_review_dashboard(
             "status_none": "暂无",
             "recommendation_review": "待审",
             "recommendation_special": "特别推荐",
+            "recommendation_auto_send": "自动发送",
+            "recommendation_discard": "丢弃",
+            "tag_low_score": "低分过滤",
+            "tag_score_high": "高分",
+            "tag_score_mid": "中分",
+            "tag_score_low": "低分",
             "event_scheduled_run": "定时任务",
             "event_queue_item": "入队",
             "event_review_action": "审核动作",
@@ -614,6 +626,31 @@ def render_review_dashboard(
         background: rgba(23, 33, 39, 0.07);
         color: var(--muted);
         font-size: 0.8rem;
+      }}
+      .pill-status {{
+        background: rgba(15, 118, 110, 0.14);
+        color: #0f766e;
+      }}
+      .pill-recommendation {{
+        background: rgba(37, 99, 235, 0.12);
+        color: #1d4ed8;
+      }}
+      .pill-score-high {{
+        background: rgba(21, 128, 61, 0.12);
+        color: #166534;
+      }}
+      .pill-score-mid {{
+        background: rgba(180, 83, 9, 0.14);
+        color: #b45309;
+      }}
+      .pill-score-low {{
+        background: rgba(185, 28, 28, 0.12);
+        color: #b91c1c;
+      }}
+      .pill-flag {{
+        background: rgba(185, 28, 28, 0.14);
+        color: #b91c1c;
+        font-weight: 600;
       }}
       .detail-panel {{
         display: grid;
@@ -1019,6 +1056,20 @@ def render_review_dashboard(
         return translations[state.language]?.[key] || translations.en?.[key] || String(value || "");
       }}
 
+      function scoreTagClass(score) {{
+        const value = Number(score || 0);
+        if (value >= 86) return "pill-score-high";
+        if (value >= 78) return "pill-score-mid";
+        return "pill-score-low";
+      }}
+
+      function scoreTagLabel(score) {{
+        const value = Number(score || 0);
+        if (value >= 86) return t("tag_score_high");
+        if (value >= 78) return t("tag_score_mid");
+        return t("tag_score_low");
+      }}
+
       function applyStaticTranslations() {{
         document.documentElement.lang = state.language === "zh" ? "zh-CN" : "en";
         document.title = t("page_title");
@@ -1167,9 +1218,10 @@ def render_review_dashboard(
             <article class="queue-item ${{active}} ${{tone}}" data-queue-id="${{item.queue_id}}">
               <strong>${{escapeHtml(item.optimized_title)}}</strong>
               <div class="queue-meta">
-                <span class="pill">${{escapeHtml(t("score_label", {{ score: item.score_total }}))}}</span>
-                <span class="pill">${{escapeHtml(recommendationLabel(item.review_recommendation))}}</span>
-                <span class="pill">${{escapeHtml(statusLabel(item.status))}}</span>
+                <span class="pill ${{scoreTagClass(item.score_total)}}">${{escapeHtml(t("score_label", {{ score: item.score_total }}))}}</span>
+                <span class="pill ${{scoreTagClass(item.score_total)}}">${{escapeHtml(scoreTagLabel(item.score_total))}}</span>
+                <span class="pill pill-recommendation">${{escapeHtml(recommendationLabel(item.review_recommendation))}}</span>
+                <span class="pill pill-status">${{escapeHtml(statusLabel(item.status))}}</span>
               </div>
               <div class="queue-meta">
                 <span class="pill">${{escapeHtml(item.source_name)}}</span>
@@ -1199,6 +1251,12 @@ def render_review_dashboard(
           const alertLink = isAlert && detailFile
             ? `<div style="margin-top:10px;"><a href="/alerts/${{detailFile}}" target="_blank" style="color:var(--accent);font-weight:600;">🔗 ${{t("action_view_alert_report")}}</a></div>`
             : "";
+          const lowScoreTag = item.status === "skipped" && item.payload?.reason === "low_score"
+            ? `<span class="pill pill-flag">${{escapeHtml(t("tag_low_score"))}}</span>`
+            : "";
+          const lowScoreDetail = item.status === "skipped" && item.payload?.reason === "low_score"
+            ? `<div class="queue-meta"><span class="pill ${{scoreTagClass(item.payload?.score_total)}}">${{escapeHtml(t("score_label", {{ score: item.payload?.score_total }}))}}</span><span class="pill">${{escapeHtml("min " + String(item.payload?.queue_review_score_min ?? ""))}}</span></div>`
+            : "";
           const payload = (!isAlert && item.payload && Object.keys(item.payload).length)
             ? `<div class="mono">${{escapeHtml(JSON.stringify(item.payload, null, 2))}}</div>`
             : "";
@@ -1207,15 +1265,17 @@ def render_review_dashboard(
               <summary>
                 <div class="activity-head">
                   <strong>${{escapeHtml(itemTitle)}}</strong>
-                  <span class="pill">${{escapeHtml(statusLabel(item.status))}}</span>
+                  <span class="pill pill-status">${{escapeHtml(statusLabel(item.status))}}</span>
                 </div>
                 <div class="queue-meta">
                   <span class="pill">${{escapeHtml(eventLabel(item.event_type))}}</span>
                   <span class="pill">${{escapeHtml(item.source_name || t("system"))}}</span>
                   <span class="pill">${{escapeHtml(item.created_at || "")}}</span>
+                  ${{lowScoreTag}}
                 </div>
               </summary>
               ${{alertLink}}
+              ${{lowScoreDetail}}
               ${{payload}}
             </details>
           `;
@@ -1309,9 +1369,10 @@ def render_review_dashboard(
               <h3>${{escapeHtml(t("detail_queue_title"))}}</h3>
               <div><strong>${{escapeHtml(queue.optimized_title)}}</strong></div>
               <div class="queue-meta" style="margin-top:12px;">
-                <span class="pill">${{escapeHtml(t("score_label", {{ score: queue.score_total }}))}}</span>
-                <span class="pill">${{escapeHtml(statusLabel(queue.status))}}</span>
-                <span class="pill">${{escapeHtml(recommendationLabel(queue.review_recommendation))}}</span>
+                <span class="pill ${{scoreTagClass(queue.score_total)}}">${{escapeHtml(t("score_label", {{ score: queue.score_total }}))}}</span>
+                <span class="pill ${{scoreTagClass(queue.score_total)}}">${{escapeHtml(scoreTagLabel(queue.score_total))}}</span>
+                <span class="pill pill-status">${{escapeHtml(statusLabel(queue.status))}}</span>
+                <span class="pill pill-recommendation">${{escapeHtml(recommendationLabel(queue.review_recommendation))}}</span>
                 <span class="pill">${{escapeHtml(queue.source_name)}}</span>
               </div>
             </div>

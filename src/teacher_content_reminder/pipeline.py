@@ -6,7 +6,14 @@ from pathlib import Path
 
 from teacher_content_reminder.alerting import AlertService
 from teacher_content_reminder.config import AppConfig, load_config
-from teacher_content_reminder.delivery import DingTalkBotClient, render_dingtalk_markdown
+from teacher_content_reminder.delivery import (
+    DingTalkBotClient,
+    WeChatOfficialClient,
+    WeComBotClient,
+    render_dingtalk_markdown,
+    render_wechat_template_fields,
+    render_wecom_markdown,
+)
 from teacher_content_reminder.exporters import ExportService
 from teacher_content_reminder.extractors import HTMLArticleExtractor
 from teacher_content_reminder.fetchers import get_fetcher
@@ -46,7 +53,9 @@ class ContentPipeline:
     def preview_source(self, source_name: str, limit: int = 3, persist: bool = False) -> list[PreviewItem]:
         source = self.config.get_source(source_name)
         fetcher = get_fetcher(source.type)
-        candidates = fetcher.fetch(source, limit=max(limit * 3, limit))
+        # Pull a wider candidate window so scheduled runs are not starved by
+        # duplicates or low-quality links occupying the top positions.
+        candidates = fetcher.fetch(source, limit=max(limit * 10, 20))
 
         items: list[PreviewItem] = []
         for candidate in candidates:
@@ -133,6 +142,24 @@ class ContentPipeline:
         queued_items: list[ReviewQueueItem] = []
         for item in generated_items:
             recommendation = review_recommendation(self.config, item.preview.score.total_score)
+            if recommendation == "discard":
+                self._log_activity(
+                    event_type="queue_item",
+                    status="skipped",
+                    message=(
+                        f"Skipped low-score item for {source_name}: "
+                        f"{item.package.optimized_title}"
+                    ),
+                    source_name=source_name,
+                    payload={
+                        "reason": "low_score",
+                        "score_total": item.preview.score.total_score,
+                        "queue_review_score_min": self.config.selection.queue_review_score_min,
+                        "title": item.package.optimized_title,
+                        "article_url": item.preview.article.canonical_url,
+                    },
+                )
+                continue
             status = initial_queue_status(self.config, recommendation)
             queue_id = self.repository.enqueue_review_item(
                 item,
@@ -395,27 +422,40 @@ class ContentPipeline:
         title, markdown = render_dingtalk_markdown(preview)
         response: dict[str, object]
         delivery_status = "dry_run"
+        channels = self._delivery_channels()
         if send:
-            try:
-                client = self._build_dingtalk_client()
-                response = client.send_markdown(title=title, text=markdown)
-                delivery_status = "sent" if response.get("errcode") == 0 else "failed"
-            except Exception as exc:
-                response = {
-                    "error": str(exc),
-                    "exception_type": type(exc).__name__,
-                }
-                delivery_status = "failed"
+            channel_results: dict[str, dict[str, object]] = {}
+            for channel in channels:
+                try:
+                    channel_response = self._send_via_channel(channel, preview, title, markdown)
+                    channel_results[channel] = channel_response
+                except Exception as exc:
+                    channel_results[channel] = {
+                        "error": str(exc),
+                        "exception_type": type(exc).__name__,
+                    }
+            failed_channels = [
+                channel
+                for channel, result in channel_results.items()
+                if not self._is_channel_success(channel, result)
+            ]
+            delivery_status = "failed" if failed_channels else "sent"
+            response = {
+                "channels": channel_results,
+                "failed_channels": failed_channels,
+            }
         else:
-            response = {"dry_run": True}
+            response = {"dry_run": True, "channels": channels}
 
-        self.repository.record_delivery_event(
-            channel=self.config.delivery.channel,
-            status=delivery_status,
-            response_payload=response,
-            queue_id=queue_id,
-            package_id=preview.package.package_id,
-        )
+        channel_payloads = response.get("channels", {}) if isinstance(response.get("channels"), dict) else {}
+        for channel in channels:
+            self.repository.record_delivery_event(
+                channel=channel,
+                status=delivery_status,
+                response_payload=channel_payloads.get(channel, response),
+                queue_id=queue_id,
+                package_id=preview.package.package_id,
+            )
         self._log_activity(
             event_type="dispatch",
             status=delivery_status,
@@ -435,7 +475,7 @@ class ContentPipeline:
                 category="dispatch_failure",
                 severity="critical",
                 title=f"[{self.config.project.name}] Dispatch failed",
-                message=f"Failed to send {queue_item.optimized_title} to DingTalk.",
+                message=f"Failed to send {queue_item.optimized_title} to configured channels.",
                 fingerprint=f"dispatch_failure:{queue_item.queue_id}",
                 source_name=queue_item.source_name,
                 queue_id=queue_item.queue_id,
@@ -483,12 +523,13 @@ class ContentPipeline:
         export_formats: tuple[str, ...] = ("markdown", "html", "json"),
     ) -> dict[str, object]:
         current = now or local_now(self.config.project.timezone)
+        primary_channel = self._delivery_channels()[0]
         sent_today = self.repository.count_delivery_events_for_date(
-            channel=self.config.delivery.channel,
+            channel=primary_channel,
             local_date=current.date().isoformat(),
             timezone_name=self.config.project.timezone,
         )
-        last_sent = self.repository.get_last_delivery_event(self.config.delivery.channel, status="sent")
+        last_sent = self.repository.get_last_delivery_event(primary_channel, status="sent")
         decision = dispatch_decision(
             self.config,
             now=current,
@@ -658,6 +699,82 @@ class ContentPipeline:
             else None
         )
         return DingTalkBotClient(webhook_url=webhook_url, secret=secret)
+
+    def _build_wecom_client(self) -> WeComBotClient:
+        webhook_url = os.getenv("WECOM_WEBHOOK_URL", "").strip()
+        if not webhook_url:
+            raise ValueError("Missing env WECOM_WEBHOOK_URL")
+        return WeComBotClient(webhook_url=webhook_url)
+
+    def _build_wechat_official_client(self) -> WeChatOfficialClient:
+        appid = os.getenv("WECHAT_OFFICIAL_APPID", "").strip()
+        appsecret = os.getenv("WECHAT_OFFICIAL_APPSECRET", "").strip()
+        template_id = os.getenv("WECHAT_OFFICIAL_TEMPLATE_ID", "").strip()
+        if not appid:
+            raise ValueError("Missing env WECHAT_OFFICIAL_APPID")
+        if not appsecret:
+            raise ValueError("Missing env WECHAT_OFFICIAL_APPSECRET")
+        if not template_id:
+            raise ValueError("Missing env WECHAT_OFFICIAL_TEMPLATE_ID")
+        return WeChatOfficialClient(
+            appid=appid,
+            appsecret=appsecret,
+            template_id=template_id,
+        )
+
+    def _delivery_channels(self) -> list[str]:
+        raw = self.config.delivery.channel or "dingtalk"
+        channels = [item.strip().lower() for item in raw.split(",") if item.strip()]
+        return channels or ["dingtalk"]
+
+    def _send_via_channel(
+        self,
+        channel: str,
+        preview: GeneratedPreviewItem,
+        title: str,
+        markdown: str,
+    ) -> dict[str, object]:
+        if channel == "dingtalk":
+            client = self._build_dingtalk_client()
+            return client.send_markdown(title=title, text=markdown)
+        if channel == "wecom":
+            client = self._build_wecom_client()
+            content = render_wecom_markdown(preview)
+            return client.send_markdown(content=content)
+        if channel == "wechat_official":
+            client = self._build_wechat_official_client()
+            fields = render_wechat_template_fields(preview)
+            touser_env = os.getenv("WECHAT_OFFICIAL_TOUSER", "").strip()
+            if not touser_env:
+                raise ValueError("Missing env WECHAT_OFFICIAL_TOUSER")
+            users = [item.strip() for item in touser_env.split(",") if item.strip()]
+            results: dict[str, object] = {}
+            for user in users:
+                results[user] = client.send_template_message(
+                    touser=user,
+                    title=fields["title"],
+                    summary=fields["summary"],
+                    source_name=fields["source_name"],
+                    score_text=fields["score_text"],
+                    url=fields["article_url"],
+                )
+            return {"results": results}
+        raise ValueError(f"Unsupported delivery channel: {channel}")
+
+    def _is_channel_success(self, channel: str, response: dict[str, object]) -> bool:
+        if "error" in response:
+            return False
+        if channel in {"dingtalk", "wecom"}:
+            return response.get("errcode") == 0
+        if channel == "wechat_official":
+            results = response.get("results", {})
+            if not isinstance(results, dict) or not results:
+                return False
+            return all(
+                isinstance(payload, dict) and payload.get("errcode") == 0
+                for payload in results.values()
+            )
+        return False
 
     def _log_activity(
         self,

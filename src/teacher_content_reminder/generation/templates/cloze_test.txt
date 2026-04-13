@@ -9,11 +9,22 @@ Passage:
 Rules:
 - Rewrite the passage as a cloze passage with numbered blanks such as "(1)", "(2)", "(3)".
 - Create exactly {cloze_blanks} blanks when possible.
-- Choose useful vocabulary words or short phrases from the passage, not random trivia questions.
+- This cloze should be exam-oriented for high-school grammar points.
+- Prioritize blanks that test: tense, voice (active/passive), non-finite verbs (to do / doing / done), subject-verb agreement, pronoun/reference, conjunctions, and fixed collocations.
+- Choose useful grammar-triggering words or short phrases from the passage, not random trivia questions.
 - For each blank, create exactly 4 short options. Prefer single words or short phrases, not full sentences.
+- Distractors must be plausible and grammar-focused. Prefer these distractor styles:
+  1) wrong tense (e.g., present vs past),
+  2) wrong voice (active vs passive),
+  3) wrong non-finite form (to do / doing / done),
+  4) wrong agreement or collocation.
 - Vary the correct answer positions across A, B, C, and D.
 - The question stem should refer to a blank number, for example "Choose the best answer for blank (1)."
 - Avoid meta options such as "the passage directly answers this question."
+- For each question explanation, explicitly include:
+  - Grammar point tag, e.g. "[Point: Tense]" / "[Point: Passive Voice]".
+  - Why the correct option fits.
+  - Why at least one distractor is wrong.
 
 Return a single JSON object with:
 - cloze_passage: string

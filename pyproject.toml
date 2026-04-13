@@ -9,6 +9,7 @@ description = "Timed content fetching and preview pipeline for teacher-focused E
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "pypdf>=6.10.0",
     "trafilatura>=1.8.0",
     "tenacity>=8.2.0"
 ]

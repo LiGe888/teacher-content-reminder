@@ -144,7 +144,7 @@ class SchedulerTests(unittest.TestCase):
         nasa_time = datetime(2026, 4, 13, 8, 10, tzinfo=ZoneInfo("Asia/Shanghai"))
         ap_time = datetime(2026, 4, 13, 9, 50, tzinfo=ZoneInfo("Asia/Shanghai"))
         science_time = datetime(2026, 4, 13, 9, 20, tzinfo=ZoneInfo("Asia/Shanghai"))
-        smithsonian_time = datetime(2026, 4, 13, 10, 35, tzinfo=ZoneInfo("Asia/Shanghai"))
+        smithsonian_time = datetime(2026, 4, 13, 10, 40, tzinfo=ZoneInfo("Asia/Shanghai"))
 
         self.assertIn("nasa_news", due_source_names(self.config, current=nasa_time))
         self.assertIn("science_news", due_source_names(self.config, current=science_time))

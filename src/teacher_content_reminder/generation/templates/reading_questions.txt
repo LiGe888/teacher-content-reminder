@@ -11,10 +11,14 @@ Passage:
 Rules:
 - Create exactly {question_count} multiple-choice questions.
 - Cover a mix of main idea, detail, vocabulary in context, inference, and purpose when possible.
+- Make the question style close to school exam papers.
+- Add a short exam-point tag at the beginning of each stem, for example:
+  "[Point: Main Idea]", "[Point: Detail Locating]", "[Point: Inference]", "[Point: Vocabulary in Context]", "[Point: Author's Purpose]".
 - Every question must have exactly 4 options.
 - Use plausible distractors grounded in the topic. Avoid joke answers and avoid meta options such as "the passage says" or "this question asks".
 - Vary the correct answer positions across A, B, C, and D.
 - Explanations should briefly justify the answer using passage evidence.
+- In explanations, name the evidence sentence/idea and briefly explain why one distractor is tempting but wrong.
 
 Return a single JSON object with:
 - questions: array of objects

@@ -35,8 +35,10 @@ def build_runtime_report(config: AppConfig) -> dict[str, object]:
             }
         )
 
+    delivery_channels = [item.strip().lower() for item in (config.delivery.channel or "").split(",") if item.strip()]
     delivery = {
         "channel": config.delivery.channel,
+        "channels": delivery_channels,
         "template": config.delivery.template,
         "webhook_env": config.delivery.webhook_env,
         "webhook_present": bool(os.getenv(config.delivery.webhook_env)),
@@ -58,10 +60,23 @@ def build_runtime_report(config: AppConfig) -> dict[str, object]:
         missing_items.append("No provider is enabled under [providers.*].")
     if config.llm.provider == "router" and available_provider_count == 0:
         missing_items.append("No API key is present for any enabled provider in the router chain.")
-    if not delivery["webhook_present"]:
-        missing_items.append(f"Missing env {config.delivery.webhook_env} for DingTalk delivery.")
-    if delivery["secret_env"] and not delivery["secret_present"]:
-        missing_items.append(f"Missing env {config.delivery.secret_env} for DingTalk delivery.")
+    if "dingtalk" in delivery_channels:
+        if not delivery["webhook_present"]:
+            missing_items.append(f"Missing env {config.delivery.webhook_env} for DingTalk delivery.")
+        if delivery["secret_env"] and not delivery["secret_present"]:
+            missing_items.append(f"Missing env {config.delivery.secret_env} for DingTalk delivery.")
+    if "wecom" in delivery_channels:
+        if not os.getenv("WECOM_WEBHOOK_URL"):
+            missing_items.append("Missing env WECOM_WEBHOOK_URL for WeCom bot delivery.")
+    if "wechat_official" in delivery_channels:
+        if not os.getenv("WECHAT_OFFICIAL_APPID"):
+            missing_items.append("Missing env WECHAT_OFFICIAL_APPID for WeChat Official delivery.")
+        if not os.getenv("WECHAT_OFFICIAL_APPSECRET"):
+            missing_items.append("Missing env WECHAT_OFFICIAL_APPSECRET for WeChat Official delivery.")
+        if not os.getenv("WECHAT_OFFICIAL_TEMPLATE_ID"):
+            missing_items.append("Missing env WECHAT_OFFICIAL_TEMPLATE_ID for WeChat Official delivery.")
+        if not os.getenv("WECHAT_OFFICIAL_TOUSER"):
+            missing_items.append("Missing env WECHAT_OFFICIAL_TOUSER for WeChat Official delivery.")
     if alerting["enabled"] and not alerting["webhook_present"]:
         missing_items.append(f"Missing env {config.alerting.webhook_env} for alert delivery.")
     if alerting["enabled"] and alerting["secret_env"] and not alerting["secret_present"]:

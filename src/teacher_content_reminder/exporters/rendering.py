@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import asdict
 from html import escape
+import re
 
 from teacher_content_reminder.models import GeneratedPreviewItem
 
@@ -135,6 +136,16 @@ def render_print_html(item: GeneratedPreviewItem, variant: str = "teacher") -> t
 
     teacher_panel = ""
     answer_section = ""
+    highlighted_reading, reading_points = _highlight_exam_points_html(
+        package.reading_passage,
+        package.keywords,
+    )
+    highlighted_cloze, cloze_points = _highlight_exam_points_html(
+        package.cloze_passage,
+        package.keywords,
+    )
+    points = sorted(set(reading_points + cloze_points))
+    points_badges = "".join(f'<span class="badge exam-badge">{escape(point)}</span>' for point in points)
     if variant == "teacher":
         answer_rows = "".join(
             f"<tr><td>Reading {index}</td><td>{escape(question.answer)}</td><td>{escape(question.explanation)}</td></tr>"
@@ -278,6 +289,16 @@ def render_print_html(item: GeneratedPreviewItem, variant: str = "teacher") -> t
       margin-bottom: 8px;
       font-size: 0.92rem;
     }}
+    .exam-badge {{
+      background: #fff7cc;
+      border-color: #e6cf7a;
+      color: #6b4f00;
+    }}
+    mark.exam-point {{
+      background: #fff0a6;
+      border-radius: 4px;
+      padding: 0 2px;
+    }}
     .page-break {{
       page-break-before: always;
     }}
@@ -311,7 +332,8 @@ def render_print_html(item: GeneratedPreviewItem, variant: str = "teacher") -> t
     {teacher_panel}
     <section>
       <h2>Reading Passage</h2>
-      <p>{escape(package.reading_passage)}</p>
+      <p>{highlighted_reading}</p>
+      <div class="meta">Highlighted points: {points_badges or "<span class='badge'>None</span>"}</div>
     </section>
     <section>
       <h2>Reading Questions</h2>
@@ -319,7 +341,7 @@ def render_print_html(item: GeneratedPreviewItem, variant: str = "teacher") -> t
     </section>
     <section>
       <h2>Cloze Passage</h2>
-      <p>{escape(package.cloze_passage)}</p>
+      <p>{highlighted_cloze}</p>
       <h2>Cloze Questions</h2>
       {cloze_questions}
     </section>
@@ -387,3 +409,28 @@ def _build_preview_prompts(item: GeneratedPreviewItem) -> list[str]:
 def _require_variant(variant: str) -> None:
     if variant not in EXPORT_VARIANTS:
         raise ValueError(f"Unsupported export variant: {variant}")
+
+
+def _highlight_exam_points_html(text: str, keywords: list[str]) -> tuple[str, list[str]]:
+    escaped = escape(text)
+    points: list[str] = []
+
+    rules: list[tuple[str, str]] = [
+        ("Tense Signal", r"\b(yesterday|last\s+\w+|ago|since|for\s+\d+|recently|now|currently)\b"),
+        ("Passive Voice", r"\b(am|is|are|was|were|be|been|being)\s+\w+ed\b"),
+        ("To-Infinitive", r"\bto\s+[a-zA-Z]+\b"),
+        ("Participle", r"\b[a-zA-Z]+(ing|ed)\b"),
+        ("Linking Word", r"\b(however|therefore|moreover|meanwhile|although|because|while|if)\b"),
+    ]
+    for keyword in keywords[:6]:
+        token = escape(keyword.strip())
+        if token:
+            rules.append((f"Keyword:{keyword}", rf"\b{re.escape(token)}\b"))
+
+    for label, pattern in rules:
+        regex = re.compile(pattern, flags=re.IGNORECASE)
+        if regex.search(escaped):
+            points.append(label)
+            escaped = regex.sub(lambda m: f'<mark class="exam-point">{m.group(0)}</mark>', escaped)
+
+    return escaped, points

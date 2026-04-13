@@ -80,8 +80,26 @@ def _looks_like_article_url(candidate_url: str, base_url: str) -> bool:
     if "#" in candidate_url:
         return False
     path = parsed_candidate.path.lower()
-    blocked = ("/tag/", "/topics/", "/author/", "/about/", "/contact/", "/newsletters/", "/video/")
+    blocked = (
+        "/tag/",
+        "/topic/",
+        "/topics/",
+        "/collection/",
+        "/collections/",
+        "/author/",
+        "/about/",
+        "/contact/",
+        "/newsletters/",
+        "/video/",
+        "/image-article/",
+    )
     if any(segment in path for segment in blocked):
         return False
-    return len(path.strip("/").split("/")) >= 1
-
+    parts = [part for part in path.strip("/").split("/") if part]
+    if not parts:
+        return False
+    # Reject section index pages with very short final path segments (for
+    # example /science/ or /technology/).
+    if len(parts[-1]) < 6:
+        return False
+    return True

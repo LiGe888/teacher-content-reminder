@@ -159,7 +159,27 @@ entry_url = "https://www.smithsonianmag.com/science-nature/"
 enabled = true
 auto_queue_enabled = true
 priority = 8
-schedule_cron = "35 10,14,19 * * *"
+schedule_cron = "40 10,14,19 * * *"
+
+[[sources]]
+name = "new_scientist"
+category = "science_nature"
+type = "rss"
+entry_url = "https://www.newscientist.com/feed/home/"
+enabled = true
+auto_queue_enabled = true
+priority = 7
+schedule_cron = "30 9,13,17,21 * * *"
+
+[[sources]]
+name = "techcrunch"
+category = "current_events"
+type = "rss"
+entry_url = "https://techcrunch.com/feed/"
+enabled = true
+auto_queue_enabled = true
+priority = 7
+schedule_cron = "0 9,12,15,18,21 * * *"
 
 [[sources]]
 name = "ap_highlights"

@@ -130,3 +130,27 @@ _FALLBACK_IMAGES = {
 def _fallback_image_url(category: str) -> str:
     """Return a stable, high-quality fallback image URL based on article category."""
     return _FALLBACK_IMAGES.get(category, _FALLBACK_IMAGES["science_nature"])
+
+
+def render_wecom_markdown(item: GeneratedPreviewItem) -> str:
+    title, dingtalk_text = render_dingtalk_markdown(item)
+    source = item.preview.article.source_name
+    score = item.preview.score.total_score
+    return (
+        f"# {title}\n"
+        f"> Source: {source} | Score: {score}\n\n"
+        f"{dingtalk_text}\n"
+    )
+
+
+def render_wechat_template_fields(item: GeneratedPreviewItem) -> dict[str, str]:
+    package = item.package
+    article = item.preview.article
+    score_text = f"{item.preview.score.total_score:.2f}"
+    return {
+        "title": package.optimized_title,
+        "summary": package.summary[:180],
+        "source_name": article.source_name,
+        "score_text": score_text,
+        "article_url": article.canonical_url,
+    }
