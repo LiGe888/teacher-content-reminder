@@ -112,6 +112,10 @@ def render_review_dashboard(
             "page_title": "Teacher Content Review",
             "hero_title": "Teacher Review Desk",
             "hero_subtitle": "Queue fresh teaching content, inspect the generated worksheet package, then approve, reject, or send it to DingTalk without leaving the page.",
+            "hero_export_title": "Export Entry",
+            "hero_export_hint": "Select a queue item first, then open the latest teacher HTML directly from here.",
+            "hero_export_open": "Open Teacher HTML",
+            "hero_export_open_disabled": "Select Item To Export",
             "language_label": "Language",
             "summary_pending_title": "Pending Review",
             "summary_pending_note": "Waiting for teacher approval.",
@@ -255,6 +259,10 @@ def render_review_dashboard(
             "page_title": "教师内容审核台",
             "hero_title": "教师审核台",
             "hero_subtitle": "把新内容拉进审核队列，检查生成后的讲义包，然后直接在页面里批准、拒绝，或发送到钉钉。",
+            "hero_export_title": "导出入口",
+            "hero_export_hint": "先选择一条队列数据，然后可在这里直接打开最新教师版 HTML。",
+            "hero_export_open": "打开教师版 HTML",
+            "hero_export_open_disabled": "先选择队列项",
             "language_label": "语言",
             "summary_pending_title": "待审核",
             "summary_pending_note": "等待教师确认。",
@@ -448,6 +456,11 @@ def render_review_dashboard(
         justify-content: space-between;
         gap: 18px;
       }}
+      .hero-actions {{
+        display: grid;
+        gap: 10px;
+        min-width: 260px;
+      }}
       .hero h1 {{
         margin: 0 0 8px;
         font-size: clamp(1.7rem, 3vw, 2.6rem);
@@ -461,6 +474,35 @@ def render_review_dashboard(
       }}
       .language-field {{
         min-width: 128px;
+      }}
+      .hero-export-entry {{
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 10px 12px;
+        background: rgba(255, 255, 255, 0.72);
+      }}
+      .hero-export-entry strong {{
+        display: block;
+        margin-bottom: 6px;
+      }}
+      .hero-export-entry p {{
+        margin: 0 0 8px;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }}
+      .hero-link {{
+        display: inline-block;
+        border-radius: 999px;
+        padding: 9px 14px;
+        background: var(--accent);
+        color: #fff;
+        text-decoration: none;
+        font-size: 0.9rem;
+      }}
+      .hero-link.disabled {{
+        background: rgba(100, 116, 139, 0.32);
+        color: rgba(255, 255, 255, 0.95);
+        pointer-events: none;
       }}
       .summary-grid {{
         display: grid;
@@ -767,6 +809,10 @@ def render_review_dashboard(
         .hero-top {{
           flex-direction: column;
         }}
+        .hero-actions {{
+          width: 100%;
+          min-width: 0;
+        }}
       }}
       @media (max-width: 720px) {{
         .shell {{
@@ -802,12 +848,19 @@ def render_review_dashboard(
               reject, or send it to DingTalk without leaving the page.
             </p>
           </div>
-          <div class="field language-field">
-            <label for="language-select" data-i18n="language_label">Language</label>
-            <select id="language-select">
-              <option value="en">English</option>
-              <option value="zh">中文</option>
-            </select>
+          <div class="hero-actions">
+            <div class="field language-field">
+              <label for="language-select" data-i18n="language_label">Language</label>
+              <select id="language-select">
+                <option value="en">English</option>
+                <option value="zh">中文</option>
+              </select>
+            </div>
+            <div class="hero-export-entry">
+              <strong data-i18n="hero_export_title">Export Entry</strong>
+              <p data-i18n="hero_export_hint">Select a queue item first, then open the latest teacher HTML directly from here.</p>
+              <a id="hero-export-link" class="hero-link disabled" href="#" target="_blank" rel="noreferrer">Select Item To Export</a>
+            </div>
           </div>
         </div>
       </section>
@@ -993,6 +1046,7 @@ def render_review_dashboard(
       const activityStatusEl = document.getElementById("activity-status");
       const activityEventFilterEl = document.getElementById("activity-event-filter");
       const activityStatusFilterEl = document.getElementById("activity-status-filter");
+      const heroExportLinkEl = document.getElementById("hero-export-link");
 
       languageSelect.value = state.language;
       sourceSelect.value = {json.dumps(normalized_default)};
@@ -1087,6 +1141,7 @@ def render_review_dashboard(
         if (!state.activityItems.length) {{
           activityCountEl.textContent = t("event_count", {{ count: 0 }});
         }}
+        updateHeroExportLink((state.selectedQueue?.export_urls || {{}}).teacher_html || null);
       }}
 
       function refreshLanguage() {{
@@ -1192,6 +1247,22 @@ def render_review_dashboard(
         state.selectedQueue = null;
         detailStatusPillEl.textContent = t("no_selection");
         detailBodyEl.innerHTML = `<div class="empty">${{escapeHtml(message)}}</div>`;
+        updateHeroExportLink(null);
+      }}
+
+      function updateHeroExportLink(url) {{
+        if (!heroExportLinkEl) {{
+          return;
+        }}
+        if (url) {{
+          heroExportLinkEl.href = url;
+          heroExportLinkEl.classList.remove("disabled");
+          heroExportLinkEl.textContent = t("hero_export_open");
+          return;
+        }}
+        heroExportLinkEl.href = "#";
+        heroExportLinkEl.classList.add("disabled");
+        heroExportLinkEl.textContent = t("hero_export_open_disabled");
       }}
 
       function escapeHtml(value) {{
@@ -1330,9 +1401,11 @@ def render_review_dashboard(
         try {{
           const detail = await fetchJson(`/api/review-queue/${{queueId}}`);
           state.selectedQueue = detail.queue;
+          state.selectedQueue.export_urls = detail.export_urls || {{}};
           reviewNoteEl.value = detail.queue.reviewer_note || "";
           detailStatusPillEl.textContent = `${{statusLabel(detail.queue.status)}} / ${{recommendationLabel(detail.queue.review_recommendation)}}`;
           detailBodyEl.innerHTML = renderDetail(detail);
+          updateHeroExportLink((detail.export_urls || {{}}).teacher_html || null);
         }} catch (error) {{
           setDetailPlaceholder(t("detail_load_failed", {{ error: error.message }}));
         }}
