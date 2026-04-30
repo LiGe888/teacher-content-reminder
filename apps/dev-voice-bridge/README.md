@@ -18,7 +18,7 @@
 - 锁定目标应用，避免误插入到别的窗口
 - PWA 安装到主屏幕
 - 页面内直接编辑自定义 glossary
-- `豆包语音 / OpenAI / 阿里云百炼 / FunASR` 多供应商转写
+- `科大讯飞 / 豆包语音 / OpenAI / 阿里云百炼 / FunASR` 多供应商转写
 - 中文、英文、粤语等语言提示参数透传到转写层
 
 当前 MVP 的链路是：
@@ -26,7 +26,7 @@
 1. 手机浏览器打开本地网页
 2. 浏览器优先提供实时转写预览
 3. 停止录音后把文本或音频发给 Mac 本地服务
-4. Mac 调用 `豆包语音 / OpenAI / 阿里云百炼 / FunASR` 做音频转写，或者只做归一化
+4. Mac 调用 `科大讯飞 / 豆包语音 / OpenAI / 阿里云百炼 / FunASR` 做音频转写，或者只做归一化
 5. 做程序员 glossary 归一化
 6. 一次性粘贴到当前 Mac 前台输入框
 
@@ -70,6 +70,16 @@ cd /Users/lige/Documents/New\ project/apps/dev-voice-bridge
 cp .env.example .env
 npm run doctor
 ```
+
+```bash
+cd /Users/lige/Documents/New\ project/apps/dev-voice-bridge
+VOICE_CODER_XFYUN_APP_ID=your_app_id_here \
+VOICE_CODER_XFYUN_API_KEY=your_api_key_here \
+VOICE_CODER_XFYUN_API_SECRET=your_api_secret_here \
+npm start
+```
+
+或者：
 
 ```bash
 cd /Users/lige/Documents/New\ project/apps/dev-voice-bridge
@@ -132,6 +142,14 @@ VOICE_CODER_FUNASR_URL=http://127.0.0.1:7861/transcribe
 ## 环境变量
 
 - `OPENAI_API_KEY`: OpenAI API key
+- `VOICE_CODER_XFYUN_APP_ID`: 讯飞开放平台应用 AppID
+- `VOICE_CODER_XFYUN_API_KEY`: 讯飞开放平台 APIKey
+- `VOICE_CODER_XFYUN_API_SECRET`: 讯飞开放平台 APISecret
+- `VOICE_CODER_XFYUN_MODEL`: 展示/兼容用途，默认 `iat`
+- `VOICE_CODER_XFYUN_DOMAIN`: 默认 `iat`
+- `VOICE_CODER_XFYUN_ACCENT`: 默认 `mandarin`
+- `VOICE_CODER_XFYUN_EOS`: 讯飞后端点静默时长，默认 `2000`
+- `VOICE_CODER_XFYUN_ENDPOINT`: 默认 `wss://iat-api.xfyun.cn/v2/iat`
 - `VOICE_CODER_DOUBAO_API_KEY`: 豆包语音新版控制台 API key
 - `VOICE_CODER_DOUBAO_APP_KEY`: 豆包语音 App key，老控制台或兼容配置可用
 - `VOICE_CODER_DOUBAO_ACCESS_KEY`: 老控制台 Access key；新版控制台通常不需要
@@ -142,7 +160,7 @@ VOICE_CODER_FUNASR_URL=http://127.0.0.1:7861/transcribe
 - `DASHSCOPE_API_KEY`: 阿里云百炼 API key
 - `VOICE_CODER_HOST`: 默认 `0.0.0.0`
 - `VOICE_CODER_PORT`: 默认 `4317`
-- `VOICE_CODER_TRANSCRIBE_PROVIDER`: `doubao` / `openai` / `dashscope` / `funasr`
+- `VOICE_CODER_TRANSCRIBE_PROVIDER`: `xfyun` / `doubao` / `openai` / `dashscope` / `funasr`
 - `VOICE_CODER_TRANSCRIBE_MODEL`: 兼容旧变量；显式指定 provider 时会作为该 provider 的模型后备值
 - `VOICE_CODER_OPENAI_MODEL`: 默认 `gpt-4o-mini-transcribe`
 - `VOICE_CODER_DASHSCOPE_MODEL`: 默认 `qwen3-asr-flash`
@@ -157,7 +175,14 @@ VOICE_CODER_FUNASR_URL=http://127.0.0.1:7861/transcribe
 
 - 当前实现优先直连豆包语音极速识别接口，默认资源 ID 用 `volc.bigasr.auc_turbo`
 - 浏览器如果只能录成 `webm`，页面会先在本地把录音转成 `wav` 再发给豆包，避免格式不兼容
-- 如果你已经同时配置了多个 key，而又不想显式指定 provider，当前自动优先级是 `doubao > openai > dashscope > funasr`
+- 如果你已经同时配置了多个 key，而又不想显式指定 provider，当前自动优先级是 `xfyun > doubao > openai > dashscope > funasr`
+
+## 讯飞接入说明
+
+- 当前接的是讯飞开放平台 `语音听写（流式版）WebAPI`
+- 讯飞要求 `16k/8k、16bit、单声道 pcm`；页面会把浏览器录音自动规整成 `16k/mono/wav`，服务端再提取 PCM 帧通过 WebSocket 发给讯飞
+- 常见参数是 `AppID / APIKey / APISecret` 三件套，三者缺一不可
+- 中文默认走 `zh_cn + iat + mandarin`；如果你后面想试粤语或别的授权语种，可以再通过语言参数和环境变量继续细调
 
 ## 模式说明
 

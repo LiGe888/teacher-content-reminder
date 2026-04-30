@@ -47,18 +47,25 @@ async function main() {
   printResult("Node.js version", nodeMajor >= 20, process.versions.node);
 
   const activeProvider = process.env.VOICE_CODER_TRANSCRIBE_PROVIDER || "auto";
+  const hasXFYunKey = Boolean(
+    process.env.VOICE_CODER_XFYUN_APP_ID &&
+      process.env.VOICE_CODER_XFYUN_API_KEY &&
+      process.env.VOICE_CODER_XFYUN_API_SECRET,
+  );
   const hasDoubaoKey = Boolean(
     process.env.VOICE_CODER_DOUBAO_API_KEY || process.env.VOICE_CODER_DOUBAO_APP_KEY,
   );
   const hasOpenAIKey = Boolean(process.env.OPENAI_API_KEY);
   const hasDashScopeKey = Boolean(process.env.DASHSCOPE_API_KEY);
   const hasFunASRURL = Boolean(process.env.VOICE_CODER_FUNASR_URL);
-  const hasAnyProvider = hasDoubaoKey || hasOpenAIKey || hasDashScopeKey || hasFunASRURL;
+  const hasAnyProvider =
+    hasXFYunKey || hasDoubaoKey || hasOpenAIKey || hasDashScopeKey || hasFunASRURL;
   printResult(
     "Transcription provider configured",
     hasAnyProvider,
     [
       `active=${activeProvider}`,
+      `xfyun=${hasXFYunKey ? "yes" : "no"}`,
       `doubao=${hasDoubaoKey ? "yes" : "no"}`,
       `openai=${hasOpenAIKey ? "yes" : "no"}`,
       `dashscope=${hasDashScopeKey ? "yes" : "no"}`,
@@ -91,7 +98,7 @@ async function main() {
   console.log("- First real paste requires macOS Accessibility permission for the terminal app running the service.");
   console.log("- Android Chrome currently gives the best real-time preview experience.");
   console.log("- iPhone Chrome usually falls back to stop-then-transcribe due to WebKit limitations.");
-  console.log("- You can switch between Doubao, OpenAI, DashScope, or a local FunASR adapter through VOICE_CODER_TRANSCRIBE_PROVIDER.");
+  console.log("- You can switch between XFYun, Doubao, OpenAI, DashScope, or a local FunASR adapter through VOICE_CODER_TRANSCRIBE_PROVIDER.");
 }
 
 main().catch((error) => {

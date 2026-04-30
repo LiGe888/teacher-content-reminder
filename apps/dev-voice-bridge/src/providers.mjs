@@ -1,11 +1,13 @@
+import { transcribeWithXFYun } from "./xfyun.mjs";
 import { transcribeWithDoubao } from "./doubao.mjs";
 import { transcribeWithDashScope } from "./dashscope.mjs";
 import { transcribeWithFunASR } from "./funasr.mjs";
 import { transcribeWithOpenAI } from "./openai.mjs";
 
-export const TRANSCRIPTION_PROVIDER_IDS = ["doubao", "openai", "dashscope", "funasr"];
+export const TRANSCRIPTION_PROVIDER_IDS = ["xfyun", "doubao", "openai", "dashscope", "funasr"];
 
 const PROVIDER_TITLES = {
+  xfyun: "科大讯飞",
   doubao: "豆包语音",
   openai: "OpenAI",
   dashscope: "阿里云百炼",
@@ -16,6 +18,10 @@ function normalizeProviderId(value, fallback = "openai") {
   const normalized = String(value ?? "")
     .trim()
     .toLowerCase();
+
+  if (normalized === "xfyun" || normalized === "iflytek" || normalized === "xunfei") {
+    return "xfyun";
+  }
 
   if (normalized === "doubao" || normalized === "volcengine" || normalized === "bytedance") {
     return "doubao";
@@ -43,6 +49,22 @@ function normalizeLanguage(language, providerId) {
   }
 
   const normalized = value.replace("_", "-").toLowerCase();
+
+  if (providerId === "xfyun") {
+    if (normalized.startsWith("zh-hk") || normalized.startsWith("yue")) {
+      return "yue";
+    }
+
+    if (normalized.startsWith("zh")) {
+      return "zh-cn";
+    }
+
+    if (normalized.startsWith("en")) {
+      return "en-us";
+    }
+
+    return normalized;
+  }
 
   if (providerId === "dashscope") {
     if (normalized.startsWith("zh-hk") || normalized.startsWith("yue")) {
@@ -73,6 +95,15 @@ function normalizeLanguage(language, providerId) {
 
 function buildProviderStatus(config, providerId) {
   switch (providerId) {
+    case "xfyun":
+      return {
+        id: providerId,
+        title: PROVIDER_TITLES[providerId],
+        kind: "cloud",
+        model: config.xfyunModel,
+        configured: Boolean(config.xfyunAppId && config.xfyunApiKey && config.xfyunApiSecret),
+        ready: Boolean(config.xfyunAppId && config.xfyunApiKey && config.xfyunApiSecret),
+      };
     case "doubao":
       return {
         id: providerId,
@@ -135,6 +166,10 @@ export async function transcribeAudioWithProvider({
 
   if (!providerStatus.ready) {
     switch (providerStatus.id) {
+      case "xfyun":
+        throw new Error(
+          "VOICE_CODER_XFYUN_APP_ID / VOICE_CODER_XFYUN_API_KEY / VOICE_CODER_XFYUN_API_SECRET is missing.",
+        );
       case "doubao":
         throw new Error(
           "VOICE_CODER_DOUBAO_API_KEY or VOICE_CODER_DOUBAO_APP_KEY is missing.",
@@ -150,6 +185,19 @@ export async function transcribeAudioWithProvider({
   }
 
   switch (providerStatus.id) {
+    case "xfyun":
+      return transcribeWithXFYun({
+        appId: config.xfyunAppId,
+        apiKey: config.xfyunApiKey,
+        apiSecret: config.xfyunApiSecret,
+        endpoint: config.xfyunEndpoint,
+        domain: config.xfyunDomain,
+        accent: config.xfyunAccent,
+        eos: config.xfyunEos,
+        audioBuffer,
+        mimeType,
+        language: normalizedLanguage,
+      });
     case "doubao":
       return transcribeWithDoubao({
         apiKey: config.doubaoApiKey,

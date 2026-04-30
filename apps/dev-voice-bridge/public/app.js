@@ -152,7 +152,7 @@ function writeWavString(view, offset, text) {
 }
 
 function encodeAudioBufferAsWav(audioBuffer) {
-  const channelCount = Math.min(audioBuffer.numberOfChannels || 1, 2);
+  const channelCount = Math.max(1, audioBuffer.numberOfChannels || 1);
   const sampleRate = audioBuffer.sampleRate;
   const frameCount = audioBuffer.length;
   const bytesPerSample = 2;
@@ -188,16 +188,45 @@ function encodeAudioBufferAsWav(audioBuffer) {
   return new Blob([output], { type: "audio/wav" });
 }
 
-async function convertAudioBlobToWav(blob) {
+async function renderAudioBufferToTargetFormat(audioBuffer, { sampleRate, channelCount }) {
+  if (
+    audioBuffer.sampleRate === sampleRate &&
+    audioBuffer.numberOfChannels === channelCount
+  ) {
+    return audioBuffer;
+  }
+
+  const OfflineAudioContextCtor =
+    globalThis.OfflineAudioContext || globalThis.webkitOfflineAudioContext;
+  if (!OfflineAudioContextCtor) {
+    throw new Error("当前浏览器无法把录音转换成目标 PCM/WAV 格式。");
+  }
+
+  const targetFrameCount = Math.max(1, Math.ceil(audioBuffer.duration * sampleRate));
+  const offlineContext = new OfflineAudioContextCtor(channelCount, targetFrameCount, sampleRate);
+  const source = offlineContext.createBufferSource();
+  source.buffer = audioBuffer;
+  source.connect(offlineContext.destination);
+  source.start(0);
+  return offlineContext.startRendering();
+}
+
+async function convertAudioBlobToWav(blob, targetOptions = {}) {
   const AudioContextCtor = globalThis.AudioContext || globalThis.webkitAudioContext;
   if (!AudioContextCtor) {
-    throw new Error("当前浏览器无法把录音转换成豆包可识别的 WAV。");
+    throw new Error("当前浏览器无法把录音转换成目标 PCM/WAV 格式。");
   }
 
   const audioContext = new AudioContextCtor();
   try {
     const buffer = await blob.arrayBuffer();
-    const audioBuffer = await audioContext.decodeAudioData(buffer.slice(0));
+    let audioBuffer = await audioContext.decodeAudioData(buffer.slice(0));
+    if (targetOptions.sampleRate || targetOptions.channelCount) {
+      audioBuffer = await renderAudioBufferToTargetFormat(audioBuffer, {
+        sampleRate: targetOptions.sampleRate ?? audioBuffer.sampleRate,
+        channelCount: targetOptions.channelCount ?? audioBuffer.numberOfChannels,
+      });
+    }
     return encodeAudioBufferAsWav(audioBuffer);
   } finally {
     if (typeof audioContext.close === "function") {
@@ -207,6 +236,17 @@ async function convertAudioBlobToWav(blob) {
 }
 
 async function prepareRecordedAudioForTranscription(blob, mimeType) {
+  if (activeProviderId === "xfyun") {
+    const convertedBlob = await convertAudioBlobToWav(blob, {
+      sampleRate: 16000,
+      channelCount: 1,
+    });
+    return {
+      blob: convertedBlob,
+      mimeType: "audio/wav",
+    };
+  }
+
   if (activeProviderId !== "doubao") {
     return {
       blob,
@@ -234,7 +274,9 @@ function pickRecorderMimeType() {
   }
 
   const candidates =
-    activeProviderId === "doubao"
+    activeProviderId === "xfyun"
+      ? ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus", "audio/mp4"]
+      : activeProviderId === "doubao"
       ? ["audio/ogg;codecs=opus", "audio/webm;codecs=opus", "audio/webm", "audio/mp4"]
       : ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"];
 

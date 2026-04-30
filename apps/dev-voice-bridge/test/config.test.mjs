@@ -34,6 +34,9 @@ test("prefers doubao when Doubao credentials are configured", () => {
     {
       VOICE_CODER_TRANSCRIBE_PROVIDER: "",
       VOICE_CODER_TRANSCRIBE_MODEL: undefined,
+      VOICE_CODER_XFYUN_APP_ID: "",
+      VOICE_CODER_XFYUN_API_KEY: "",
+      VOICE_CODER_XFYUN_API_SECRET: "",
       VOICE_CODER_DOUBAO_API_KEY: "doubao-key",
       VOICE_CODER_DOUBAO_APP_KEY: "",
       VOICE_CODER_DOUBAO_UID: undefined,
@@ -49,9 +52,35 @@ test("prefers doubao when Doubao credentials are configured", () => {
   );
 });
 
+test("prefers xfyun when complete XFYun credentials are configured", () => {
+  withEnv(
+    {
+      VOICE_CODER_TRANSCRIBE_PROVIDER: "",
+      VOICE_CODER_TRANSCRIBE_MODEL: undefined,
+      VOICE_CODER_XFYUN_APP_ID: "xf-app-id",
+      VOICE_CODER_XFYUN_API_KEY: "xf-api-key",
+      VOICE_CODER_XFYUN_API_SECRET: "xf-api-secret",
+      VOICE_CODER_DOUBAO_API_KEY: "doubao-key",
+      VOICE_CODER_DOUBAO_APP_KEY: "",
+      OPENAI_API_KEY: "",
+      DASHSCOPE_API_KEY: "",
+      VOICE_CODER_FUNASR_URL: "",
+    },
+    () => {
+      const config = loadConfig();
+      assert.equal(config.transcribeProvider, "xfyun");
+      assert.equal(config.transcribeModel, "iat");
+      assert.equal(config.xfyunDomain, "iat");
+    },
+  );
+});
+
 test("resolves the volcengine alias to doubao and applies legacy model fallback", () => {
   withEnv(
     {
+      VOICE_CODER_XFYUN_APP_ID: "",
+      VOICE_CODER_XFYUN_API_KEY: "",
+      VOICE_CODER_XFYUN_API_SECRET: "",
       VOICE_CODER_TRANSCRIBE_PROVIDER: "volcengine",
       VOICE_CODER_TRANSCRIBE_MODEL: "legacy-doubao-model",
       VOICE_CODER_DOUBAO_API_KEY: "",
@@ -63,6 +92,24 @@ test("resolves the volcengine alias to doubao and applies legacy model fallback"
       assert.equal(config.transcribeProvider, "doubao");
       assert.equal(config.transcribeModel, "legacy-doubao-model");
       assert.equal(config.doubaoUid, "doubao-app-key");
+    },
+  );
+});
+
+test("resolves the iflytek alias to xfyun and applies legacy model fallback", () => {
+  withEnv(
+    {
+      VOICE_CODER_TRANSCRIBE_PROVIDER: "iflytek",
+      VOICE_CODER_TRANSCRIBE_MODEL: "legacy-xfyun-model",
+      VOICE_CODER_XFYUN_APP_ID: "xf-app-id",
+      VOICE_CODER_XFYUN_API_KEY: "xf-api-key",
+      VOICE_CODER_XFYUN_API_SECRET: "xf-api-secret",
+    },
+    () => {
+      const config = loadConfig();
+      assert.equal(config.transcribeProvider, "xfyun");
+      assert.equal(config.transcribeModel, "legacy-xfyun-model");
+      assert.equal(config.xfyunDomain, "legacy-xfyun-model");
     },
   );
 });

@@ -19,6 +19,10 @@ function resolveProvider(value) {
     .trim()
     .toLowerCase();
 
+  if (normalized === "xfyun" || normalized === "iflytek" || normalized === "xunfei") {
+    return "xfyun";
+  }
+
   if (normalized === "doubao" || normalized === "volcengine" || normalized === "bytedance") {
     return "doubao";
   }
@@ -42,6 +46,14 @@ function resolveDefaultProvider() {
   const explicit = resolveProvider(process.env.VOICE_CODER_TRANSCRIBE_PROVIDER);
   if (explicit) {
     return explicit;
+  }
+
+  if (
+    process.env.VOICE_CODER_XFYUN_APP_ID &&
+    process.env.VOICE_CODER_XFYUN_API_KEY &&
+    process.env.VOICE_CODER_XFYUN_API_SECRET
+  ) {
+    return "xfyun";
   }
 
   if (process.env.VOICE_CODER_DOUBAO_API_KEY || process.env.VOICE_CODER_DOUBAO_APP_KEY) {
@@ -99,6 +111,21 @@ export function loadConfig() {
       (transcribeProvider === "openai" && legacyTranscribeModel
         ? legacyTranscribeModel
         : "gpt-4o-mini-transcribe"),
+    xfyunAppId: process.env.VOICE_CODER_XFYUN_APP_ID ?? "",
+    xfyunApiKey: process.env.VOICE_CODER_XFYUN_API_KEY ?? "",
+    xfyunApiSecret: process.env.VOICE_CODER_XFYUN_API_SECRET ?? "",
+    xfyunEndpoint:
+      process.env.VOICE_CODER_XFYUN_ENDPOINT ?? "wss://iat-api.xfyun.cn/v2/iat",
+    xfyunDomain:
+      process.env.VOICE_CODER_XFYUN_DOMAIN ??
+      process.env.VOICE_CODER_XFYUN_MODEL ??
+      (transcribeProvider === "xfyun" && legacyTranscribeModel ? legacyTranscribeModel : "iat"),
+    xfyunAccent: process.env.VOICE_CODER_XFYUN_ACCENT ?? "mandarin",
+    xfyunEos: coercePort(process.env.VOICE_CODER_XFYUN_EOS, 2000),
+    xfyunModel:
+      process.env.VOICE_CODER_XFYUN_MODEL ??
+      process.env.VOICE_CODER_XFYUN_DOMAIN ??
+      (transcribeProvider === "xfyun" && legacyTranscribeModel ? legacyTranscribeModel : "iat"),
     doubaoApiKey: process.env.VOICE_CODER_DOUBAO_API_KEY ?? "",
     doubaoAppKey: process.env.VOICE_CODER_DOUBAO_APP_KEY ?? "",
     doubaoAccessKey: process.env.VOICE_CODER_DOUBAO_ACCESS_KEY ?? "",
@@ -130,7 +157,9 @@ export function loadConfig() {
   };
 
   config.transcribeModel =
-    config.transcribeProvider === "doubao"
+    config.transcribeProvider === "xfyun"
+      ? config.xfyunModel
+      : config.transcribeProvider === "doubao"
       ? config.doubaoModel
       : config.transcribeProvider === "dashscope"
       ? config.dashScopeModel
