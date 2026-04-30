@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#b84d1f" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <title>Dev Voice Bridge</title>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <p class="eyebrow">Programmer Voice Input</p>
+        <h1>Dev Voice Bridge</h1>
+        <p class="subtitle">
+          手机当麦克风，Mac 保持焦点在你的 IDE / Claude / Codex 上。
+        </p>
+      </section>
+
+      <section class="card">
+        <div class="status-row">
+          <div>
+            <p class="label">服务状态</p>
+            <p id="healthText" class="value">检查中...</p>
+          </div>
+          <div>
+            <p class="label">当前 Mac 前台应用</p>
+            <p id="targetText" class="value">读取中...</p>
+          </div>
+        </div>
+
+        <div class="status-row compact">
+          <div>
+            <p class="label">目标应用策略</p>
+            <p id="targetModeText" class="value">默认使用当前前台应用</p>
+          </div>
+          <div>
+            <p class="label">已锁定目标</p>
+            <p id="pinnedTargetText" class="value">未锁定</p>
+          </div>
+        </div>
+
+        <div class="compatibility">
+          <div class="compat-head">
+            <p class="label">浏览器兼容性</p>
+            <p id="browserHintText" class="compat-copy">检测中...</p>
+          </div>
+          <div class="compat-grid">
+            <div class="compat-item">
+              <span class="compat-name">MediaRecorder</span>
+              <span id="capMediaRecorder" class="compat-badge">检测中</span>
+            </div>
+            <div class="compat-item">
+              <span class="compat-name">SpeechRecognition</span>
+              <span id="capSpeechRecognition" class="compat-badge">检测中</span>
+            </div>
+            <div class="compat-item">
+              <span class="compat-name">PWA 安装</span>
+              <span id="capPwa" class="compat-badge">检测中</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="status-row compact">
+          <div>
+            <p class="label">实时预览</p>
+            <p id="previewModeText" class="value">检测中...</p>
+          </div>
+          <div>
+            <p class="label">提交方式</p>
+            <p class="value">只插入，你自己回车发送</p>
+          </div>
+        </div>
+
+        <div class="controls-grid">
+          <label>
+            <span>模式</span>
+            <select id="modeSelect">
+              <option value="chat">chat</option>
+              <option value="editor">editor</option>
+              <option value="terminal">terminal</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="button-row">
+          <button id="recordButton" class="record idle">开始录音</button>
+          <button id="refreshTargetButton" class="secondary">刷新前台应用</button>
+        </div>
+
+        <div class="button-row">
+          <button id="pinTargetButton" class="secondary">锁定当前前台应用</button>
+          <button id="clearPinnedTargetButton" class="secondary">取消锁定</button>
+          <button id="installPwaButton" class="secondary">安装到主屏幕</button>
+        </div>
+
+        <label class="textarea-block">
+          <span>实时预览 / 最终文本</span>
+          <textarea
+            id="transcriptInput"
+            placeholder="如果没有配置 OpenAI API key，也可以直接在这里输入文本，测试桥接链路。"
+          ></textarea>
+        </label>
+
+        <div class="hint">
+          浏览器支持实时识别时会边说边显示；否则会在停止录音后自动转写。插入后请回到目标应用手动回车发送。
+        </div>
+
+        <div class="hint hint-strong">
+          推荐：`Android Chrome` 最适合实时预览；`iPhone 上的 Chrome` 受 WebKit 限制，通常会回退到“停止后转写”。
+        </div>
+
+        <div id="installHintBox" class="hint"></div>
+
+        <div class="button-row">
+          <button id="normalizeButton" class="secondary">只做归一化</button>
+          <button id="commitButton" class="primary">插入到 Mac 当前输入框</button>
+        </div>
+
+        <p id="messageBox" class="message"></p>
+      </section>
+
+      <section class="card">
+        <div class="section-head">
+          <h2>最近历史</h2>
+          <button id="refreshHistoryButton" class="secondary small">刷新</button>
+        </div>
+        <div id="historyList" class="history-list"></div>
+      </section>
+
+      <section class="card">
+        <div class="section-head">
+          <h2>自定义术语</h2>
+          <button id="refreshGlossaryButton" class="secondary small">刷新</button>
+        </div>
+        <p class="hint">
+          这里维护你自己的 `spoken -> written` 映射。保存后会覆盖同名默认词条。
+        </p>
+        <div class="status-row compact">
+          <div>
+            <p class="label">默认词条</p>
+            <p id="defaultGlossaryCount" class="value">0</p>
+          </div>
+          <div>
+            <p class="label">自定义词条</p>
+            <p id="userGlossaryCount" class="value">0</p>
+          </div>
+        </div>
+        <div id="glossaryList" class="glossary-list"></div>
+        <div class="button-row">
+          <button id="addGlossaryRowButton" class="secondary">新增词条</button>
+          <button id="saveGlossaryButton" class="primary">保存自定义术语</button>
+        </div>
+      </section>
+    </main>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>

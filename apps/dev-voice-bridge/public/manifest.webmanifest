@@ -1,0 +1,17 @@
+{
+  "name": "Dev Voice Bridge",
+  "short_name": "VoiceBridge",
+  "description": "Programmer voice input bridge for Mac-first AI workflows.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4efe6",
+  "theme_color": "#b84d1f",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
